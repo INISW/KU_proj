@@ -1,0 +1,24 @@
+{
+  "do_convert_rgb": true,
+  "do_normalize": true,
+  "do_rescale": true,
+  "do_resize": true,
+  "image_mean": [
+    0.36358296,
+    0.3543133,
+    0.35846899
+  ],
+  "image_processor_type": "BlipImageProcessor",
+  "image_std": [
+    0.18523056,
+    0.17936261,
+    0.17520992
+  ],
+  "processor_class": "BlipProcessor",
+  "resample": 3,
+  "rescale_factor": 0.00392156862745098,
+  "size": {
+    "height": 384,
+    "width": 384
+  }
+}

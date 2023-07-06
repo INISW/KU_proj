@@ -28,10 +28,10 @@ print("*" * 70)
 print(table)
 print("*" * 70)
 
-# input_keyword = [""] 키워드 0개
-# input_keyword = ["woman"] 키워드 1개
-input_keyword=["man", "black"]  # 키워드 2개
-result_list = video_tracking(input_type='B', table=table, input_keyword=["woman", "black"])
+input_keyword = [""]  # 키워드 0개
+# input_keyword = ["woman"]  # 키워드 1개
+# input_keyword=["man", "black"]  # 키워드 2개
+result_list = video_tracking(input_type='B', table=table, input_keyword=input_keyword)
 print("keyword: ", input_keyword)
 print(result_list)
 print("*" * 70)

@@ -27,8 +27,6 @@ from yolov4_deepsort.tools import generate_detections as gdet
 
 import torch
 
-
-
 # sys.path.append("\\yolov4-deepsort-master")
 
 # import core.utils as utils
@@ -46,7 +44,37 @@ import torch
 # from deep_sort.tracker import Tracker
 # from tools import generate_detections as gdet
 
-def video_tracking(input_type):
+def draw_box(table, input_keyword):
+    table_len = len(table)
+
+    print('-'*70)
+    print('input_keyword: ', input_keyword)
+    try:
+        selected_row = []
+
+        if (len(input_keyword) == 0):
+            for i in range(table_len):
+                row = table.iloc[i]
+                selected_row.append(row)
+        else:
+            for i in range(table_len):
+                row = table.iloc[i]
+                object_cap = row['caption']
+                matched_keywords = [True for keyword in input_keyword if keyword in object_cap]
+                if sum(matched_keywords) == len(input_keyword):
+                    selected_row.append(row)
+                    print("-"*70)
+                    print("keyword를 포함하는 객체 id")
+                    print(row['object_id'])
+                    print("해당 캡션 문장")
+                    print(row['caption'])
+    except:
+        print('draw_box Error')
+
+    return selected_row
+
+
+def video_tracking(input_type, table, input_keyword):
     for name in list(flags.FLAGS):
         delattr(flags.FLAGS, name)
 
@@ -126,21 +154,26 @@ def video_tracking(input_type):
 
     frame_num = 0
 
-    # if input_type == 'B':
-    #     db_draw_box = db_handler.draw_box(video_id, input_keyword)
-    #     if len(db_draw_box) == 0:
-    #         return json.dumps({'status': 'fail', 'message': 'No object to track'})
-    #     else:
-    #         print("## 실제로 Tracking이 되야 하는 객체 ID 리스트 ##")
+    result_list = []
+
+    if input_type == 'B':
+        draw_box_res = draw_box(table, input_keyword)
+        if len(draw_box_res) == 0:
+            return json.dumps({'status': 'fail', 'message': 'No object to track'})
+        else:
+            print("## 실제로 Tracking이 되야 하는 객체 ID 리스트 ##")
             
-    #         result = pd.DataFrame(db_draw_box)
-    #         db_rs = result.drop_duplicates(subset='object_id',keep='first') 
-    #         result_obj_id = db_rs['object_id'].tolist()
-    #         print("result_obj_id: ", result_obj_id)
-    #         print("-" * 70)
+            draw_box_res = pd.DataFrame(draw_box_res)
+            data_rs = draw_box_res.drop_duplicates(subset='object_id',keep='first') 
+
+            result_list = data_rs[['object_id', 'caption']]
+
+            result_obj_id = data_rs['object_id'].tolist()
+            print("result_obj_id: ", result_obj_id)
+            print("-" * 70)
     
     # while video is running
-    result_list = []
+    # result_list = []
     cnt = 0
     while True:
         return_value, frame = vid.read()
@@ -284,17 +317,18 @@ def video_tracking(input_type):
                 print("DB Input Result: ", result_list)
                 # print("DB Input Result: ", insert_result)
                 print("*"*70)
-            # elif input_type =='B':
-            #     if (int(track.track_id) in result_obj_id):
-            #         print(int(track.track_id) in result_obj_id)
 
-            #         color = colors[int(track.track_id) % len(colors)]
-            #         color = [i * 255 for i in color]
-            #         cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
-            #         cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*17, int(bbox[1])), color, -1)
-            #         cv2.putText(frame, class_name + "-" + str(track.track_id),(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255),2)
-            #     else:
-            #         continue
+            elif input_type =='B':
+                if (int(track.track_id) in result_obj_id):
+                    print(int(track.track_id) in result_obj_id)
+
+                    color = colors[int(track.track_id) % len(colors)]
+                    color = [i * 255 for i in color]
+                    cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
+                    cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*17, int(bbox[1])), color, -1)
+                    cv2.putText(frame, class_name + "-" + str(track.track_id),(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255),2)
+                else:
+                    continue
 
         result = np.asarray(frame)
         result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)

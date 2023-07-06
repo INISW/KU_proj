@@ -25,6 +25,8 @@ from yolov4_deepsort.deep_sort.detection import Detection
 from yolov4_deepsort.deep_sort.tracker import Tracker
 from yolov4_deepsort.tools import generate_detections as gdet
 
+import torch
+
 
 
 # sys.path.append("\\yolov4-deepsort-master")
@@ -304,3 +306,33 @@ def video_tracking(input_type):
             out.write(result)
 
     return result_list
+
+
+# inference_servie에서 사용할 객체
+class IM:
+    def __init__(self):
+        self.model_path = './meta_data'
+        self.preprocessor_path = './meta_data/prprocessor'
+        self.sr_path = './meta_data/super_resol'
+
+
+# 캡션 생성 함수
+def multi_image_caption(params): #images, model, preprocessor
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    #model = torch.load("C:\\Users\\Sihyun\\Desktop\\INISW\\project\\sihyun_track\\caption\\blip\\blip_all_1e6_final.pt", map_location=device)
+    model = params["model_blip"].to(device)
+    model.eval()
+    #vis_processors = BlipProcessor.from_pretrained('C:\\Users\\Sihyun\\Desktop\\INISW\\project\\sihyun_track\\caption\\blip\\preprocessor').image_processor # 훨씬 더 빠르다. 
+    #decode = BlipProcessor.from_pretrained('C:\\Users\\Sihyun\\Desktop\\INISW\\project\\sihyun_track\\caption\\blip\\preprocessor').batch_decode
+    vis_processors = params["processor_blip"].image_processor
+    decode = params["processor_blip"].batch_decode
+
+    captions = []
+    for image in params["cropped_images"]:
+        captions.append(single_image_caption(image,model,vis_processors,decode,device)) # 이미지 captioning
+    return captions
+
+def single_image_caption(image, model, vis_processors, decode, device):
+    generated_ids = model.generate(pixel_values= vis_processors(images=image, return_tensors="pt").to(device).pixel_values,max_length=300)
+    caption= decode(generated_ids, skip_special_tokens=True)[0]
+    return caption

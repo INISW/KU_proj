@@ -1,5 +1,5 @@
-from flask import Blueprint
-from database.db_handler import DBHandler
+# from flask import Blueprint
+# from database.db_handler import DBHandler
 import json, os, cv2, time, sys
 import pandas as pd
 from absl import flags
@@ -11,55 +11,64 @@ if len(physical_devices) > 0:
     print("len(physical_devices): ", len(physical_devices))
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-sys.path.append("C:\\Users\\Sihyun\\Desktop\\INISW\\project\\sihyun_track_test\\yolov4-deepsort-master")
-
-import core.utils as utils
-from core.yolov4 import filter_boxes
-from tensorflow.python.saved_model import tag_constants
-from core.config import cfg
+import yolov4_deepsort.core.utils as utils
+from yolov4_deepsort.core.yolov4 import filter_boxes
+from yolov4_deepsort.core.config import cfg
 from PIL import Image
 import numpy as np
 import tensorflow.keras as keras
 import matplotlib.pyplot as plt
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
-from deep_sort import preprocessing, nn_matching
-from deep_sort.detection import Detection
-from deep_sort.tracker import Tracker
-from tools import generate_detections as gdet
+from yolov4_deepsort.deep_sort import preprocessing, nn_matching
+from yolov4_deepsort.deep_sort.detection import Detection
+from yolov4_deepsort.deep_sort.tracker import Tracker
+from yolov4_deepsort.tools import generate_detections as gdet
 
-video = Blueprint("video", __name__)
 
-@video.route('/video_tracking', methods=['POST', 'GET'])
-def video_tracking(video_id, video_name, input_keyword, input_type):
+
+# sys.path.append("\\yolov4-deepsort-master")
+
+# import core.utils as utils
+# from core.yolov4 import filter_boxes
+# from tensorflow.python.saved_model import tag_constants
+# from core.config import cfg
+# from PIL import Image
+# import numpy as np
+# import tensorflow.keras as keras
+# import matplotlib.pyplot as plt
+# from tensorflow.compat.v1 import ConfigProto
+# from tensorflow.compat.v1 import InteractiveSession
+# from deep_sort import preprocessing, nn_matching
+# from deep_sort.detection import Detection
+# from deep_sort.tracker import Tracker
+# from tools import generate_detections as gdet
+
+def video_tracking(input_type):
     for name in list(flags.FLAGS):
         delattr(flags.FLAGS, name)
-    db_handler = DBHandler()
-    video_id = int(video_id)
-    video_name = video_name['video_name']
-    output_video_name = str(video_name[:(len(video_name)-4)])+'_output.mp4'
 
-    flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt')
-    flags.DEFINE_string('weights', 'C:\\Users\\Sihyun\\Desktop\\INISW\\project\\sihyun_track_test\\yolov4-deepsort-master\\checkpoints\\yolov4-tiny-416',
-                        'path to weights file')
+    # db_handler = DBHandler()
+    # video_id = int(video_id)
+    # video_name = video_name['video_name']
+    # output_video_name = str(video_name[:(len(video_name)-4)])+'_output.mp4'
+
+    flags.DEFINE_string('framework', 'tf', 'tf, tflite, trt')
+    flags.DEFINE_string('weights', './yolov4_deepsort/checkpoints/yolov4-tiny-416','path to weights file')
     flags.DEFINE_integer('size', 416, 'resize images to')
     flags.DEFINE_boolean('tiny', True, 'yolo or yolo-tiny')
     flags.DEFINE_string('model', 'yolov4', 'yolov3 or yolov4')
-
     flags.DEFINE_string('output_format', 'H264', 'codec used in VideoWriter when saving video to file')
     flags.DEFINE_float('iou', 0.45, 'iou threshold')
     flags.DEFINE_float('score', 0.50, 'score threshold')
     flags.DEFINE_boolean('dont_show', False, 'dont show video output')
     flags.DEFINE_boolean('info', False, 'show detailed info of tracked objects')
     flags.DEFINE_boolean('count', False, 'count objects being tracked on screen')
-    flags.DEFINE_string('video', f'C:\\Users\\Sihyun\\Desktop\\INISW\\project\\INISW_proj\\web\\www\\static\\videos\\{video_name}', 'path to input video or set to 0 for webcam')
-    flags.DEFINE_string('output', f'C:\\Users\\Sihyun\\Desktop\\INISW\\project\\INISW_proj\\web\\www\\static\\outputs\\{output_video_name}', 'path to output video')
+    flags.DEFINE_string('video', './yolov4_deepsort/data/video/demo4.mp4', 'path to input video or set to 0 for webcam')
+    flags.DEFINE_string('output', 'demo4_test.mp4', 'path to output video')
 
     FLAGS = flags.FLAGS
     FLAGS(sys.argv)
-
-    print("FLAGS.video: ", FLAGS.video)
-    print("FLAGS.output: ", FLAGS.output)
 
     # Definition of the parameters
     max_cosine_distance = 0.4
@@ -67,7 +76,8 @@ def video_tracking(video_id, video_name, input_keyword, input_type):
     nms_max_overlap = 1.0
     
     # initialize deep sort
-    model_filename = 'C:\\Users\\Sihyun\\Desktop\\INISW\\project\\sihyun_track_test\\yolov4-deepsort-master\\model_data\\mars-small128.pb'
+    # model_filename = 'C:\\Users\\Sihyun\\Desktop\\INISW\\project\\sihyun_track_test\\yolov4-deepsort-master\\model_data\\mars-small128.pb'
+    model_filename = './yolov4_deepsort/model_data/mars-small128.pb'
     encoder = gdet.create_box_encoder(model_filename, batch_size=1)
     # calculate cosine distance metric
     metric = nn_matching.NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget)
@@ -114,21 +124,21 @@ def video_tracking(video_id, video_name, input_keyword, input_type):
 
     frame_num = 0
 
-    if input_type == 'B':
-        db_draw_box = db_handler.draw_box(video_id, input_keyword)
-        if len(db_draw_box) == 0:
-            return json.dumps({'status': 'fail', 'message': 'No object to track'})
-        else:
-            print("## 실제로 Tracking이 되야 하는 객체 ID 리스트 ##")
+    # if input_type == 'B':
+    #     db_draw_box = db_handler.draw_box(video_id, input_keyword)
+    #     if len(db_draw_box) == 0:
+    #         return json.dumps({'status': 'fail', 'message': 'No object to track'})
+    #     else:
+    #         print("## 실제로 Tracking이 되야 하는 객체 ID 리스트 ##")
             
-            result = pd.DataFrame(db_draw_box)
-            db_rs = result.drop_duplicates(subset='object_id',keep='first') 
-            result_obj_id = db_rs['object_id'].tolist()
-            print("result_obj_id: ", result_obj_id)
-            print("-" * 70)
+    #         result = pd.DataFrame(db_draw_box)
+    #         db_rs = result.drop_duplicates(subset='object_id',keep='first') 
+    #         result_obj_id = db_rs['object_id'].tolist()
+    #         print("result_obj_id: ", result_obj_id)
+    #         print("-" * 70)
     
     # while video is running
-    dict_result = {}
+    result_list = []
     cnt = 0
     while True:
         return_value, frame = vid.read()
@@ -266,23 +276,23 @@ def video_tracking(video_id, video_name, input_keyword, input_type):
                 print("객체 좌표값")
                 print(bbox_0, bbox_1, bbox_2, bbox_3)
                 # insert_result = db_handler.insert_video_info(frame_num-1, track.track_id, bbox_0, bbox_1, bbox_2, bbox_3, video_id, minutes, seconds)
-                dict_result[cnt] = {"frame_num": frame_num-1, "track_id": track.track_id, "x1": bbox_0, "y1": bbox_1, "x2": bbox_2, "y2": bbox_3, "video_id": video_id, "minutes": minutes, "seconds": seconds}
+                result_list.append({"frame_num": frame_num-1, "object_id": track.track_id, "x1": bbox_0, "y1": bbox_1, "x2": bbox_2, "y2": bbox_3, "minutes": minutes, "seconds": seconds})
                 cnt += 1
 
-                print("DB Input Result: ", dict_result)
+                print("DB Input Result: ", result_list)
                 # print("DB Input Result: ", insert_result)
                 print("*"*70)
-            elif input_type =='B':
-                if (int(track.track_id) in result_obj_id):
-                    print(int(track.track_id) in result_obj_id)
+            # elif input_type =='B':
+            #     if (int(track.track_id) in result_obj_id):
+            #         print(int(track.track_id) in result_obj_id)
 
-                    color = colors[int(track.track_id) % len(colors)]
-                    color = [i * 255 for i in color]
-                    cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
-                    cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*17, int(bbox[1])), color, -1)
-                    cv2.putText(frame, class_name + "-" + str(track.track_id),(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255),2)
-                else:
-                    continue
+            #         color = colors[int(track.track_id) % len(colors)]
+            #         color = [i * 255 for i in color]
+            #         cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
+            #         cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*17, int(bbox[1])), color, -1)
+            #         cv2.putText(frame, class_name + "-" + str(track.track_id),(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255),2)
+            #     else:
+            #         continue
 
         result = np.asarray(frame)
         result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
@@ -293,4 +303,4 @@ def video_tracking(video_id, video_name, input_keyword, input_type):
             print("*"*70)
             out.write(result)
 
-    return json.dumps({'status':'200', 'output_video_name':output_video_name})
+    return result_list

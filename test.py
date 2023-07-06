@@ -20,3 +20,7 @@ params = init_svc(im, table) # {'model_blip': model_blip, 'processor_blip': proc
 # 캡션 생성 및 table에 객체 id별 캡션 넣어주기
 captions = multi_image_caption(params)
 table['caption'] = captions
+
+print("*" * 70)
+print(table)
+print("*" * 70)

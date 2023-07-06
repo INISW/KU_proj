@@ -278,7 +278,7 @@ def video_tracking(input_type):
                 print("객체 좌표값")
                 print(bbox_0, bbox_1, bbox_2, bbox_3)
                 # insert_result = db_handler.insert_video_info(frame_num-1, track.track_id, bbox_0, bbox_1, bbox_2, bbox_3, video_id, minutes, seconds)
-                result_list.append({"frame_num": frame_num-1, "object_id": track.track_id, "x1": bbox_0, "y1": bbox_1, "x2": bbox_2, "y2": bbox_3, "minutes": minutes, "seconds": seconds})
+                result_list.append({"frame_id": frame_num-1, "object_id": track.track_id, "x1": bbox_0, "y1": bbox_1, "x2": bbox_2, "y2": bbox_3, "minutes": minutes, "seconds": seconds})
                 cnt += 1
 
                 print("DB Input Result: ", result_list)
@@ -312,7 +312,7 @@ def video_tracking(input_type):
 class IM:
     def __init__(self):
         self.model_path = './meta_data'
-        self.preprocessor_path = './meta_data/prprocessor'
+        self.preprocessor_path = './meta_data/preprocessor'
         self.sr_path = './meta_data/super_resol'
 
 

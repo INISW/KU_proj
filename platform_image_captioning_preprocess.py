@@ -45,15 +45,15 @@ def init_svc(im, data):
     
     # 사용할 모델 및 preprocessor 불러오기
     processor_blip = BlipProcessor.from_pretrained(im.preprocessor_path)
-    model_blip = torch.load(os.path.join(im.model_path, 'blip_all_1e6.pt'))
+    model_blip = torch.load(os.path.join(im.model_path, 'blip_all_1e6.pt'), map_location=torch.device('cpu'))
     pro_sr = Swin2SRImageProcessor.from_pretrained(os.path.join(im.sr_path, 'preprocessor'))
-    model_sr = torch.load(os.path.join(im.sr_path, 'swinsr.pt'))
+    model_sr = torch.load(os.path.join(im.sr_path, 'swinsr.pt'), map_location=torch.device('cpu'))
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model_sr.to(device)
 
     # 비디오에서 이미지 크롭한 후 메모리에 스탠바이
-    video = os.path.join("인풋 비디오 경로")
+    video = "./yolov4_deepsort/data/video/demo4.mp4"
     cap =cv2.VideoCapture(video)
     images = []
     for _, info in data.iterrows(): # 이미지 전체 다 가져오기

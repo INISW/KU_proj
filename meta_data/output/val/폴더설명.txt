@@ -1,0 +1,1 @@
+"0_local_image_captiong.ipynb"에서 모델 train 시 생성되는 캡션 json파일 저장 경로

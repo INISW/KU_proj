@@ -2,7 +2,10 @@ from platform_image_captioning_inference_service_sub import video_tracking, IM, 
 from platform_image_captioning_preprocess import init_svc
 import pandas as pd
 
-result_list = video_tracking(input_type='A')
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
+
+result_list = video_tracking(input_type='A', table=None, input_keyword='')
 result = pd.DataFrame(result_list)
 
 table = result.drop_duplicates(subset='object_id', keep='first')
@@ -20,3 +23,15 @@ params = init_svc(im, table) # {'model_blip': model_blip, 'processor_blip': proc
 # 캡션 생성 및 table에 객체 id별 캡션 넣어주기
 captions = multi_image_caption(params)
 table['caption'] = captions
+
+print("*" * 70)
+print(table)
+print("*" * 70)
+
+input_keyword = [""]  # 키워드 0개
+# input_keyword = ["woman"]  # 키워드 1개
+# input_keyword=["man", "black"]  # 키워드 2개
+result_list = video_tracking(input_type='B', table=table, input_keyword=input_keyword)
+print("keyword: ", input_keyword)
+print(result_list)
+print("*" * 70)

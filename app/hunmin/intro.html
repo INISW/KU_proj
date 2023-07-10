@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ko-KR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>전국민 AI 훈민정음</title>
+    <script src="../static/jquery-3.6.0.min.js"></script>
+    <meta http-equiv="X-UA-Compatible" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://cdn.skypack.dev/sanitize.css" rel="stylesheet" />
+    <link href="../static/config.css" rel="stylesheet" />
+    <link href="../static/style.css" rel="stylesheet" />
+    <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16x16.png">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.5/dist/web/static/pretendard.css" />
+    <link href="../static/hunmin28.css" rel="stylesheet" />
+    <link rel="stylesheet" href="../static/navbar.css ">
+
+    <script>
+        // td클릭으로 로그인하고 뒤로가기할때 로그인으로 표기 처리
+        window.onpageshow = function(event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        }
+
+        $(function(){
+            // modal open
+            $("td>span").on('click', function(){
+                var modal_window_position = 0;
+                var modal_window_top = 0;
+                var dom_height = $("body").height();
+                var modal_window = "#"+$(this).parent().attr("name");
+                var td_offset = $(this).parent().offset();
+                $(modal_window).addClass("opened_modal");
+                
+                modal_window_position = window.innerWidth/2 - $(".opened_modal").width()/2;
+                modal_window_top = $("main").height() - $(".hunminCase28").height()/2 - $(".opened_modal").height()/2;
+                $(".opened_modal").offset({left: modal_window_position, top: modal_window_top});
+
+                $(".opened_modal #demo").after("<button type=\"button\" class=\"close\" style=\"float:right; line-height:20px;\">닫기</button>");
+                $(".close").on('click',function(){
+                    $(".modal").fadeOut();
+                    $(".opened_modal").fadeOut();
+                    $(".opened_modal").offset({top: 0, left:0});
+                    $(".opened_modal").removeClass("opened_modal");
+                    $(".close").remove();
+    
+                });
+
+                $(".modal").fadeIn();
+                $(modal_window).fadeIn();
+
+            });
+            // modal close
+            $(".modal").on('click',function(){
+                $(".modal").fadeOut();
+                $(".opened_modal").fadeOut();
+                $(".opened_modal").offset({top: 0, left:0});
+                $(".opened_modal").removeClass("opened_modal");
+                $(".close").remove();
+
+            });
+            
+        });
+    </script>
+    <style>
+        
+    </style>
+</head>
+
+<body>
+    <nav class="navbar" >
+        <ul class="navbar_logo" >
+            <li><a href="/"><img alt="AI훈민정음" src="../assets/nav_logo.png"/></a></li>
+        </ul>
+    </nav>
+    <main class="main">
+        <div class="container_main">
+            <div class="area_info">
+                <!-- <img src="/assets/ai_hunmin_icon.png" alt="AI훈민정음" width="800" /> -->
+                <img src="../assets/ai_hunmin_intro.png" alt="AI훈민정음" width="1200" />
+            </div>
+        </div>
+
+        <div class="hunminCase28">
+            <hr class="divider">
+            <table>
+                <caption class="humin28Title">
+                    <span>고려대 지능정보 SW아카데미</span>
+                </caption>
+                <tr>
+                    <th id="backslash" class="columnHeader"><div>Task</div>Data</th>
+                    <th id="classification" class="columnHeader"><span class="headerCell">Task 1</span></th>
+                    <th id="regression" class="columnHeader"><span class="headerCell">Task 2</span></th>
+                    <th id="detection" class="columnHeader"><span class="headerCell">Task 3</span></th>
+                    <th id="clustering" class="columnHeader"><span class="headerCell">Task 4</span></th>
+                </tr>
+                <tr>
+                    <th class="rowHeader"><span class="headerCell">Data 1</span></th>
+                    <td headers="classification text" name="1-1"><span>영화 리뷰 텍스트<br>김정 분석</span></td>
+                    <td headers="regression text" name="1-2"><span>Style Transfer</span></td>
+                    <td headers="detection text" name="1-3"><span>음성 단어 분류</span></td>
+                    <td headers="clustering text" name="1-4"><span>NBA 선수 포지션 분류</span></td>
+                </tr>
+                <tr>
+                    <th class="rowHeader"><span class="headerCell">Data 2</span></th>
+                    <td headers="classification image" name="2-1"><span></span></a></td>
+                    <td headers="regression image" name="2-2"><span></span></td>
+                    <td headers="detection image" name="2-3"><span></span></td>
+                    <td headers="clustering image" name="2-4"><span></span></td>
+                </tr>
+                <tr>
+                    <th class="rowHeader"><span class="headerCell">Data 3</span></th>
+                    <td headers="classification voice" name="3-1"><span></span></td>
+                    <td headers="regression voice" name="3-2"><span></span></td>
+                    <td headers="detection voice" name="3-3"><span></span></td>
+                    <td headers="clustering voice" name="3-4"><span></span></a></td>
+                </tr>
+                <tr>
+                    <th class="rowHeader"><span class="headerCell">Data 4</span></th>
+                    <td headers="classification video" name="4-1"><span>TOC with CCTV</span></td>
+                    <td headers="regression video" name="4-2"><span></span></td>
+                    <td headers="detection video" name="4-3"><span></span></td>
+                    <td headers="clustering video" name="4-4"><span></span></td>
+                </tr>
+                <tr>
+                    <th class="rowHeader"><span class="headerCell">Data 5</span></th>
+                    <td headers="classification log" name="5-1"><span></span></td>
+                    <td headers="regression log" name="5-2"><span></span></td>
+                    <td headers="detection log" name="5-3"><span></span></td>
+                    <td headers="clustering log" name="5-4"><span></span></td>
+                </tr>
+                <tr>
+                    <th class="rowHeader"><span class="headerCell">Data 6</span></th>
+                    <td headers="classification satellite" name="6-1"><span></span></td>
+                    <td headers="regression satellite" name="6-2"><span></span></td>
+                    <td headers="detection satellite" name="6-3"><span></span></td>
+                    <td headers="clustering satellite" name="6-4"><span></span></td>
+                </tr>
+                <tr>
+                    <th class="rowHeader"><span class="headerCell">Data 7</span></th>
+                    <td headers="classification binary" name="7-1"><span></span></td>
+                    <td headers="regression binary" name="7-2"><span></span></td>
+                    <td headers="detection binary" name="7-3"><span></span></td>
+                    <td headers="clustering binary" name="7-4"><span></span></td>
+                </tr>
+            </table>
+        </div>
+
+        
+        <div class="container_main">
+            <div class="area_shortcut">
+                <!-- <a href="/ai_block"> -->
+                <a href="/">
+                    <!-- 이동되는 페이지 url 적용 -->
+                    <span>Ex-1</span>
+                    <svg width="30" height="31" viewBox="0 0 30 31" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M16.25 6.75L25 15.5L16.25 24.25M5 15.5H25H5Z" stroke="white" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    </svg>
+                </a>
+
+                <a href="/">
+                    <!-- 이동되는 페이지 url 적용 -->
+                    <span>Ex-2</span>
+                    <svg width="30" height="31" viewBox="0 0 30 31" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M16.25 6.75L25 15.5L16.25 24.25M5 15.5H25H5Z" stroke="white" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    </svg>
+                </a>
+                <a href="/">
+                    <!-- 이동되는 페이지 url 적용 -->
+                    <span>Ex-3</span>
+                    <svg width="30" height="31" viewBox="0 0 30 31" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M16.25 6.75L25 15.5L16.25 24.25M5 15.5H25H5Z" stroke="white" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+        <!-- 모달창 배경입니다. -->
+        <div class="modal"></div>
+
+        <!-- 문자 분류 모달창입니다. -->
+        <div class="modal_content" id="1-1">
+            <p class="modal_title">영화 리뷰 텍스트<br>감정 분석</p>
+            <p class="modal_subTitle">개요</p>
+            <ul class="guide_list">
+                <li>
+                    <label id="info_1" class="guide_link">
+                        <a href='./hunmin_sub/text_classification.html?slide_num=1'>소개</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_2" class="guide_link">
+                        <a href='./hunmin_sub/text_classification.html?slide_num=2'>데이터셋</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_3" class="guide_link">
+                        <a href='./hunmin_sub/text_classification.html?slide_num=3'>전처리</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_4" class="guide_link">
+                        <a href='./hunmin_sub/text_classification.html?slide_num=4'>Word Embedding</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_5" class="guide_link">
+                        <a href='./hunmin_sub/text_classification.html?slide_num=5'>Word Embedding</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_6" class="guide_link">
+                        <a href='./hunmin_sub/text_classification.html?slide_num=6'>Layer</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_7" class="guide_link">
+                        <a href='./hunmin_sub/text_classification.html?slide_num=7'>추론 결과</a>
+                    </label>
+                </li>
+            </ul>
+            <p class="modal_subTitle">추론</p>
+            <ul class="guide_list">
+                <li>
+                    <label id="demo">
+                        <a href='./hunmin_sub/text_classification.html#demo'>예제 실행해보기</a>
+                    </label>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Style Transfer 모달창입니다. -->
+        <div class="modal_content" id="1-2">
+            <p class="modal_title">Style Transfer</p>
+            <p class="modal_subTitle">개요</p>
+            <ul class="guide_list">
+                <li>
+                    <label id="info_1" class="guide_link">
+                        <a href='./hunmin_sub/image_regression.html?slide_num=1'>소개</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_2" class="guide_link">
+                        <a href='./hunmin_sub/image_regression.html?slide_num=2'>데이터셋</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_3" class="guide_link">
+                        <a href='./hunmin_sub/image_regression.html?slide_num=3'>Anti-alias</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_4" class="guide_link">
+                        <a href='./hunmin_sub/image_regression.html?slide_num=4'>VGG19</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_5" class="guide_link">
+                        <a href='./hunmin_sub/image_regression.html?slide_num=5'>Style & Content</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_6" class="guide_link">
+                        <a href='./hunmin_sub/image_regression.html?slide_num=6'>Gram Matrix</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_7" class="guide_link">
+                        <a href='./hunmin_sub/image_regression.html?slide_num=7'>Style Transfer</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_8" class="guide_link">
+                        <a href='./hunmin_sub/image_regression.html?slide_num=8'>Style Transfer</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_9" class="guide_link">
+                        <a href='./hunmin_sub/image_regression.html?slide_num=9'>추론 결과</a>
+                    </label>
+                </li>
+            </ul>
+            <p class="modal_subTitle">추론</p>
+            <ul class="guide_list">
+                <li>
+                    <label id="demo">
+                        <a href='./hunmin_sub/image_regression.html#demo'>예제 실행해보기</a>
+                    </label>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 음성 단어 분류 모달창입니다. -->
+        <div class="modal_content" id="1-3">
+            <p class="modal_title">음성 단어 분류</p>
+            <p class="modal_subTitle">개요</p>
+            <ul class="guide_list">
+                <li>
+                    <label id="info_1" class="guide_link">
+                        <a href='./hunmin_sub/audio_classification.html?slide_num=1'>소개</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_2" class="guide_link">
+                        <a href='./hunmin_sub/audio_classification.html?slide_num=2'>데이터셋</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_3" class="guide_link">
+                        <a href='./hunmin_sub/audio_classification.html?slide_num=3'>스펙트로그램</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_4" class="guide_link">
+                        <a href='./hunmin_sub/audio_classification.html?slide_num=4'>CNN</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_5" class="guide_link">
+                        <a href='./hunmin_sub/audio_classification.html?slide_num=5'>CNN</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_6" class="guide_link">
+                        <a href='./hunmin_sub/audio_classification.html?slide_num=6'>추론 결과</a>
+                    </label>
+                </li>
+            </ul>
+            <p class="modal_subTitle">추론</p>
+            <ul class="guide_list">
+                <li>
+                    <label id="demo">
+                        <a href='./hunmin_sub/audio_classification.html#demo'>예제 실행해보기</a>
+                    </label>
+                </li>
+            </ul>
+        </div>
+
+        <!-- NBA 선수 포지션 분류 모달창입니다. -->
+        <div class="modal_content" id="1-4">
+            <p class="modal_title">NBA 선수 포지션 분류</p>
+            <p class="modal_subTitle">개요</p>
+            <ul class="guide_list">
+                <li>
+                    <label id="info_1" class="guide_link">
+                        <a href='./hunmin_sub/log_classification.html?slide_num=1'>소개</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_2" class="guide_link">
+                        <a href='./hunmin_sub/log_classification.html?slide_num=2'>데이터셋</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_3" class="guide_link">
+                        <a href='./hunmin_sub/log_classification.html?slide_num=3'>데이터셋 전처리</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_4" class="guide_link">
+                        <a href='./hunmin_sub/log_classification.html?slide_num=4'>정규화</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_5" class="guide_link">
+                        <a href='./hunmin_sub/log_classification.html?slide_num=5'>원-핫 인코딩</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_6" class="guide_link">
+                        <a href='./hunmin_sub/log_classification.html?slide_num=6'>Neural Network(신경망)</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_7" class="guide_link">
+                        <a href='./hunmin_sub/log_classification.html?slide_num=7'>Model Layer</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_8" class="guide_link">
+                        <a href='./hunmin_sub/log_classification.html?slide_num=8'>추론 결과</a>
+                    </label>
+                </li>
+            </ul>
+            <p class="modal_subTitle">추론</p>
+            <ul class="guide_list">
+                <li>
+                    <label id="demo">
+                        <a href='./hunmin_sub/log_classification.html#demo'>예제 실행해보기</a>
+                    </label>
+                </li>
+            </ul>
+        </div>
+
+        <!-- TOC with CCTV 모달창입니다. -->
+        <div class="modal_content" id="4-1">
+            <p class="modal_title">TOC with CCTV</p>
+            <p class="modal_subTitle">개요</p>
+            <ul class="guide_list">
+                <li>
+                    <label id="info_1" class="guide_link">
+                        <a href='./hunmin_sub/toc_with_cctv.html?slide_num=1'>소개</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_2" class="guide_link">
+                        <a href='./hunmin_sub/toc_with_cctv.html?slide_num=2'>데이터셋</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_3" class="guide_link">
+                        <a href='./hunmin_sub/toc_with_cctv.html?slide_num=3'>Tracking</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_4" class="guide_link">
+                        <a href='./hunmin_sub/toc_with_cctv.html?slide_num=4'>Super resolution</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_5" class="guide_link">
+                        <a href='./hunmin_sub/toc_with_cctv.html?slide_num=5'>Data Augmentation</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_6" class="guide_link">
+                        <a href='./hunmin_sub/toc_with_cctv.html?slide_num=6'>Fine-Tuning</a>
+                    </label>
+                </li>
+                <li>
+                    <label id="info_9" class="guide_link">
+                        <a href='./hunmin_sub/toc_with_cctv.html?slide_num=7'>추론 결과</a>
+                    </label>
+                </li>
+            </ul>
+            <p class="modal_subTitle">추론</p>
+            <ul class="guide_list">
+                <li>
+                    <label id="demo">
+                        <a href='./hunmin_sub/toc_with_cctv.html#demo'>예제 실행해보기</a>
+                    </label>
+                </li>
+            </ul>
+        </div>
+
+    </main>
+</body>
+</html>

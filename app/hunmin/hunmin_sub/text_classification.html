@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ko-KR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>전국민 AI 훈민정음</title>
+    <script src="../../static/jquery-3.6.0.min.js"></script>
+    <script src="../../static/waitMe.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="../../static/waitMe.min.css" />
+    <meta http-equiv="X-UA-Compatible" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://cdn.skypack.dev/sanitize.css" rel="stylesheet" />
+    <link href="../../static/config.css" rel="stylesheet" />
+    <link href="../../static/slider1.css" rel="stylesheet" />
+    <link href="../../static/style.css" rel="stylesheet" />
+    <link rel="icon" type="image/png" sizes="16x16" href="../../assets/favicon-16x16.png">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="theme-color" content="#ffffff">
+    <script>
+        $(function() {
+            $.ajaxSetup({
+                cache: false,
+                //contentType: "application/json",
+                dataType: "json",
+                beforeSend: function(xhr) {
+                    $("body").waitMe({
+                        effect: 'bounce',
+                        text: '텍스트 분석중입니다.',
+                        bg: 'rgba(255, 255, 255, 0.7)',
+                        color: '#000',
+                        maxSize: '80',
+                        fontSize: '25px',
+                        waitTime: -1,
+                        textPos: 'vertical'
+                    });
+                },
+                complete: function(xhr, status) {
+                    $("body").waitMe('hide');
+                }
+            });
+            $form = $("form#aiform");
+            // API 호출
+            $(document).on("click", ".btn-call", function() {
+                if($form.find("input[name=file]").val() != null){
+                    $.ajax({
+                        url: "/inference/text_req_ajx", // 텍스트 입력이 들어가는 요청 route
+                        data: JSON.stringify({
+                            // 추론에 사용할 데이터가 word에 들어가야 한다.
+                            // 추론에 [['hi! there!']] 을 입력했다면
+                            // word에는 'hi! there!' 문자열이 들어간다.
+                            // 적절한 포매팅은 ajax요청의 url에 적어놓은 부분에서 실행된다.
+                            word: $("div.group_inputImg>span").html(),
+                            // 생성한 API URL이 들어가는 부분
+                            url: $form.find("input[name=url]").val()
+                        }),
+                        method: "POST", // HTTP 요청 메소드(GET, POST 등)
+                        dataType: "json" // 서버에서 보내줄 데이터의 타입
+                    })
+                    // HTTP 요청이 성공하면 요청한 데이터가 done() 메소드로 전달됨.
+                    .done(function(json) {
+                        // json은 요청의 응답인데, 보통 {"res" : "true", "response" : API응답 } 형식이다.
+                        // 해당 예시는 response안의 응답이 data 혹은 inference로 반환되는 것을 받아오는 코드
+                        // 예시의 json 변수는      {"res" : "true", "response" : {"inference" : inference_result }}
+                        // {"inference" : inference_result }가 API를 생성하고 테스트하였을때 결과로 확인되는 return이다.
+                        if (json.res == "true") {
+                            var response_data = json.response.data;
+                            if (response_data == null) {
+                                response_data = json.response.inference;
+                            }
+                            // 응답을 확인하여 화면에 적용
+                            if (response_data == "pos") {
+                                $("div.wrap_next").addClass("show_alert_pass");
+                            } else {
+                                $("div.wrap_next").addClass("show_alert_nonpass");
+                            }
+                        } else {
+                            // API 호출에 실패하거나 오류가 나면 json.res에 "false"가 들어간다.
+                            alert('API 호출에 실패했습니다.');
+                        }
+                    })
+                    // HTTP 요청이 실패하면 오류와 상태에 관한 정보가 fail() 메소드로 전달됨.
+                    .fail(function(xhr, status, errorThrown) {
+                        console.log(errorThrown);
+                    });
+                }
+            });
+        });
+
+        // 추론에 사용할 데이터를 선택할 때 화면에 적용
+        function setText(event) {
+            var reader = new FileReader();
+            reader.onload = function(event) {
+                $("div.wrap_next").removeClass("show_alert_pass show_alert_nonpass");
+                $("div.group_inputImg>span").html(event.target.result);
+            };
+            reader.readAsText(event.target.files[0]);
+        }
+
+        // 소개자료 ppt페이지 표출기능
+        // intro.html에서 번호를 mapping하여 원하는 페이지가 표출되도록 설정
+        $(function(){
+            var url = new URL(window.location.href);
+            var slide_num = url.searchParams.get("slide_num");
+            var slide_id = "slide" + slide_num;
+            $("#"+slide_id).prop("checked", true);
+            $(".slide_btn").on("click", function(){
+                var checked_radio = $("input[name=slide]:checked").attr("id");
+                var info_num = checked_radio[checked_radio.length - 1];
+                if($(this).attr("id")=="btn_prev"){
+                    info_num = info_num - 1;
+                    if(info_num < 1){
+                        info_num = 1;
+                    }
+                } else {
+                    info_num = parseInt(info_num) + 1;
+                    if(info_num > $("input[name=slide]").length){
+                        info_num = $("input[name=slide]").length;
+                    }
+                }
+                $("#slide"+info_num).prop("checked",true);
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <main class="main">        
+        <div class="container_main">
+            <div class="inner_title">
+                <div height="25px">
+                    <!-- 메인화면으로 이동하는 url 적용 필요합니다 -->
+                    <button class="home_button" type="button" onclick="location.href='../intro.html'">
+                        <!-- <a href="https://www.flaticon.com/free-icons/home" title="home icons">Home icons created by Rizki Ahmad Fauzi - Flaticon</a> -->
+                        <img src="../../assets/home_icon.png" width="25px" height="25px">
+                        <img src="../../assets/home_button.png" width="100px" height="25px">
+                    </button>
+                </div>
+                <p>영화 리뷰 텍스트 감정 분석</p>
+            </div>
+            <div class="slider" >
+                <!-- 하위 input, li, label을 수정하여 작성한 소개자료 페이지에 맞도록 수정한다. -->
+                <input type="radio" name="slide" id="slide1" checked>
+                <input type="radio" name="slide" id="slide2">
+                <input type="radio" name="slide" id="slide3">
+                <input type="radio" name="slide" id="slide4">
+                <input type="radio" name="slide" id="slide5">
+                <input type="radio" name="slide" id="slide6">
+                <input type="radio" name="slide" id="slide7">
+                <ul id="imgholder" class="imgs">
+                    <li><img src="../../assets/example_info_img/1_1/ppt1.png" width="1100px" height="800px"></li>
+                    <li><img src="../../assets/example_info_img/1_1/ppt2.png" width="1100px" height="800px"></li>
+                    <li><img src="../../assets/example_info_img/1_1/ppt3.png" width="1100px" height="800px"></li>
+                    <li><img src="../../assets/example_info_img/1_1/ppt4.png" width="1100px" height="800px"></li>
+                    <li><img src="../../assets/example_info_img/1_1/ppt5.png" width="1100px" height="800px"></li>
+                    <li><img src="../../assets/example_info_img/1_1/ppt6.png" width="1100px" height="800px"></li>
+                    <li><img src="../../assets/example_info_img/1_1/ppt7.png" width="1100px" height="800px"></li>
+                </ul>
+                <div class="bullets">
+                    <label for="slide1">&nbsp;</label>
+                    <label for="slide2">&nbsp;</label>
+                    <label for="slide3">&nbsp;</label>
+                    <label for="slide4">&nbsp;</label>
+                    <label for="slide5">&nbsp;</label>
+                    <label for="slide6">&nbsp;</label>
+                    <label for="slide7">&nbsp;</label>
+                </div>
+                <div id="slide_btn">
+                    <button id="btn_prev" class="slide_btn"><<</button>
+                    <button id="btn_next" class="slide_btn">>></button>
+                </div>
+            </div>
+            
+            <div id="demo">
+                <h1 >예제 실행해보기                    
+                    <button class="download">
+                        <a href="../../inference_data/text_classification.zip" download>추론 데이터 다운로드</a>
+                    </button>
+                </h1>
+                <form id="aiform" method="post" enctype="multipart/form-data">
+                    <div class="inner_url">
+                        <div class="form">
+                            <label for="file_url">API URL</label>
+                            <input id="file_url" type="text" name="url" value="http://idro3vub.dl.nhnes.net/model/api/31dbc/inference" />
+                        </div>
+                    </div>
+                    <div class="inner_work">
+                        <div class="wrap_previous">
+                            <div class="group_control">
+                                <div class="box_control">
+                                    <p></p>
+                                    <!-- p 내부에 파일이름이 들어갑니다 -->
+                                    <label for="file_img">파일선택</label>
+                                    <input type="file" name="file" id="file_img" accept=".txt" onchange="setText(event);" />
+                                </div>
+        
+                                <button type="button" class="btn_filter btn-call">분류</button>
+                            </div>
+                            <div class="group_inputImg">
+                                <span>텍스트 파일을 선택해주세요</span>
+                            </div>
+                        </div>
+        
+                        <div class="wrap_next ">
+                            <!-- 정상 알림이 뜰경우 show_alert_pass 클래스 추가 / 비정상 알림이 뜰경우 show_alert_nonpass 추가 -->
+                            <div class="inner_next ">
+                                <!-- 이미지가 보여질 경우 img.src에 이미지 경로 추가 및 div.group_inputImg에 show_img 클래스 추가 -->
+                                <span>분류 결과</span>
+                            </div>
+                            <span class="result_alert state_pass">긍정적 리뷰</span>
+                            <span class="result_alert state_nonpass">부정적 리뷰</span>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+    <br/>
+    <br/>
+</body>
+</html>

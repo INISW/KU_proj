@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ko-KR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>전국민 AI 훈민정음</title>
+    <script src="../../static/jquery-3.6.0.min.js"></script>
+    <script src="../../static/waitMe.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="../../static/waitMe.min.css" />
+    <meta http-equiv="X-UA-Compatible" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://cdn.skypack.dev/sanitize.css" rel="stylesheet" />
+    <link href="../../static/config.css" rel="stylesheet" />
+    <link href="../../static/slider1.css" rel="stylesheet" />
+    <link href="../../static/style.css" rel="stylesheet" />
+    <link rel="icon" type="image/png" sizes="16x16" href="../../assets/favicon-16x16.png">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="theme-color" content="#ffffff">
+    <script>
+        $(function() {
+            $.ajaxSetup({
+                cache: false,
+                //contentType: "application/json",
+                dataType: "json",
+                beforeSend: function(xhr) {
+                    $("body").waitMe({
+                        effect: 'bounce',
+                        text: '로그 분석중입니다.',
+                        bg: 'rgba(255, 255, 255, 0.7)',
+                        color: '#000',
+                        maxSize: '80',
+                        fontSize: '25px',
+                        waitTime: -1,
+                        textPos: 'vertical'
+                    });
+                },
+                complete: function(xhr, status) {
+                    $("body").waitMe('hide');
+                }
+            });
+            $form = $("form#aiform");
+            // API 호출
+            $(document).on("click", ".btn-call", function() {
+                // 호출 이전 입력되지 않은 부분 탐색
+                var data = [];
+                for(var i=0; i<$('.inner_work input').length; i++) {
+                    var input_data = $('input[name=data'+(i+1)+']');
+                    if(input_data.val() == ""){
+                        var key_val = input_data.parent().prev().html();
+                        alert("입력되지 않은 부분이 있습니다! : " + key_val);
+                        return false;
+                    }
+                    // 숫자가 아닌 데이터(문자렬)은 작은따옴표로 감싸야한다.
+                    if(!$.isNumeric(input_data.val())){
+                        data[i] = "\'" + input_data.val() + "\'";
+                        continue;
+                    }
+                    data[i] = input_data.val();
+                }
+                var class_info = {"Center":"센터", "Guard":"가드", "Forward":"포워드"};
+                $.ajax({
+                    url: "/inference/log_req_ajx", // 사용자의 입력이 들어가는 요청 route
+                    data: JSON.stringify({
+                        url: $form.find("input[name=url]").val(),
+                        // 추론에 사용할 데이터가 log_data에 들어가야 한다.
+                        // 추론에 [['user', 123, 123, 123]] 을 입력했다면
+                        // log_data에는 'user',123,123,123이 들어간다.
+                        // 적절한 포매팅은 ajax요청의 url에 적어놓은 부분에서 실행된다.
+                        log_data: data.join()
+                    }),
+                    method: "POST", // HTTP 요청 메소드(GET, POST 등)
+                    enctype: 'multipart/form-data',
+                    processData: false,
+                    contentType: false,
+                    dataType: "json" // 서버에서 보내줄 데이터의 타입
+                })
+                // HTTP 요청이 성공하면 요청한 데이터가 done() 메소드로 전달됨.
+                .done(function(json) {
+                    // json은 요청의 응답인데, 보통 {"res" : "true", "response" : API응답 } 형식이다.
+                    // 해당 예시는 response안의 응답이 data 혹은 inference로 반환되는 것을 받아오는 코드
+                    // 예시의 json 변수는      {"res" : "true", "response" : {"inference" : inference_result }}
+                    // {"inference" : inference_result }가 API를 생성하고 테스트하였을때 결과로 확인되는 return이다.
+                    if (json.res == "true") {
+                        var response_data = json.response.data;
+                        if (response_data == null) {
+                            response_data = json.response.inference;
+                        }
+                        response_data = class_info[response_data];
+                        $(".result_alert").html(response_data);
+                        $("div.wrap_next").addClass("show_alert_pass");
+                    } else {
+                        // API 호출에 실패하거나 오류가 나면 json.res에 "false"가 들어간다.
+                        alert('API 호출에 실패했습니다.');
+                    }
+                })
+                // HTTP 요청이 실패하면 오류와 상태에 관한 정보가 fail() 메소드로 전달됨.
+                .fail(function(xhr, status, errorThrown) {
+                    console.log(errorThrown);
+                });
+            });
+        });
+
+        // 추론에 사용할 데이터를 선택할 때 화면에 적용
+        function setThumbnail(event) {
+            var reader = new FileReader();
+            reader.onload = function(event) {
+                $("div.wrap_next").removeClass("show_alert_pass show_alert_nonpass");
+                $("#imgSrc").attr("src", event.target.result);
+                $("div.group_inputImg").addClass("show_img");
+            };
+            reader.readAsDataURL(event.target.files[0]);
+        }
+
+        // 붙여넣기 할 경우 자동 채우기 기능
+        $(function() {
+            $('.inner_work input').bind('paste', function(e) {
+                $("div.wrap_next").removeClass("show_alert_pass show_alert_nonpass");
+                var el = $(this);
+                setTimeout(function() {
+                    var input_data = $(el).val()
+                    var cal_data = input_data.replace(" ", "");
+                    var datas = cal_data.split(",");
+
+                    if(datas.length == $('.inner_work input').length){
+                        for(i=0; i<$('.inner_work input').length;i++){
+                            $('input[name=data'+(i+1)+']').val(datas[i]);
+                        }
+                    }
+                }, 1);
+
+            });
+        });
+
+        // 소개자료 ppt페이지 표출기능
+        // intro.html에서 번호를 mapping하여 원하는 페이지가 표출되도록 설정
+        $(function(){
+            var url = new URL(window.location.href);
+            var slide_num = url.searchParams.get("slide_num");
+            var slide_id = "slide" + slide_num;
+            $("#"+slide_id).prop("checked", true);
+
+            $(".slide_btn").on("click", function(){
+                var checked_radio = $("input[name=slide]:checked").attr("id");
+                var info_num = checked_radio[checked_radio.length - 1];
+                if($(this).attr("id")=="btn_prev"){
+                    info_num = info_num - 1;
+                    if(info_num < 1){
+                        info_num = 1;
+                    }
+                } else {
+                    info_num = parseInt(info_num) + 1;
+                    if(info_num > $("input[name=slide]").length){
+                        info_num = $("input[name=slide]").length;
+                    }
+                }
+                $("#slide"+info_num).prop("checked",true);
+            });
+
+        });
+    </script>
+</head>
+
+<body>
+    <main class="main">        
+        <div class="container_main">
+            <div class="inner_title">
+                <div height="25px">
+                    <!-- 메인화면으로 이동하는 url 적용 필요합니다 -->
+                    <button class="home_button" type="button" onclick="location.href='../intro.html'">
+                        <!-- <a href="https://www.flaticon.com/free-icons/home" title="home icons">Home icons created by Rizki Ahmad Fauzi - Flaticon</a> -->
+                        <img src="../../assets/home_icon.png" width="25px" height="25px">
+                        <img src="../../assets/home_button.png" width="100px" height="25px">
+                    </button>
+                </div>
+                <p >NBA 선수 포지션 분류</p>
+            </div>
+            <div class="slider" >
+                <input type="radio" name="slide" id="slide1" checked>
+                <input type="radio" name="slide" id="slide2">
+                <input type="radio" name="slide" id="slide3">
+                <input type="radio" name="slide" id="slide4">
+                <input type="radio" name="slide" id="slide5">
+                <input type="radio" name="slide" id="slide6">
+                <input type="radio" name="slide" id="slide7">
+                <input type="radio" name="slide" id="slide8">
+                <ul id="imgholder" class="imgs">
+                    <li><img src="../../assets/example_info_img/1_4/ppt1.png" width="1100px" height="800px"></li>
+                    <li><img src="../../assets/example_info_img/1_4/ppt2.png" width="1100px" height="800px"></li>
+                    <li><img src="../../assets/example_info_img/1_4/ppt3.png" width="1100px" height="800px"></li>
+                    <li><img src="../../assets/example_info_img/1_4/ppt4.png" width="1100px" height="800px"></li>
+                    <li><img src="../../assets/example_info_img/1_4/ppt5.png" width="1100px" height="800px"></li>
+                    <li><img src="../../assets/example_info_img/1_4/ppt6.png" width="1100px" height="800px"></li>
+                    <li><img src="../../assets/example_info_img/1_4/ppt7.png" width="1100px" height="800px"></li>
+                    <li><img src="../../assets/example_info_img/1_4/ppt8.png" width="1100px" height="800px"></li>
+
+                </ul>
+                <div class="bullets">
+                    <label for="slide1">&nbsp;</label>
+                    <label for="slide2">&nbsp;</label>
+                    <label for="slide3">&nbsp;</label>
+                    <label for="slide4">&nbsp;</label>
+                    <label for="slide5">&nbsp;</label>
+                    <label for="slide6">&nbsp;</label>
+                    <label for="slide7">&nbsp;</label>
+                    <label for="slide8">&nbsp;</label>
+                </div>
+                <div id="slide_btn">
+                    <button id="btn_prev" class="slide_btn"><<</button>
+                    <button id="btn_next" class="slide_btn">>></button>
+                </div>
+            </div>
+            
+            <div id="demo">
+                <h1 >예제 실행해보기
+                    <button class="download">
+                        <a href="../../inference_data/log_classification.zip" download>추론 데이터 다운로드</a>
+                    </button>
+                </h1>
+
+                <form id="aiform" method="post" enctype="multipart/form-data">
+                    <div class="inner_url">
+                        <div class="form">
+                            <label for="file_url">API URL</label>
+                            <input id="file_url" type="text" name="url" value="http://idro3vub.dl.nhnes.net/model/api/e7acc/inference" />
+                        </div>
+                    </div>
+                    <div class="inner_work">
+                        <div class="group_control text_group_control">
+                            <div class="text_box_control">
+                                <table class="text_table_css">
+                                    <tr>
+                                        <th>Key</th>
+                                        <th>Value</th>
+                                    </tr>
+                                    <tr>
+                                        <td>FULL_NAME</td>
+                                        <td><input type="text" name="data1" size="20" style="width:100%; border:0;" placeholder='"Jarrett Allen"'></td>
+                                    </tr>
+                                    <tr>
+                                        <td>TEAM</td>
+                                        <td><input type="text" name="data2" size="20" style="width:100%; border:0;" placeholder='"Cle"'></td>
+                                    </tr>
+                                    <tr>
+                                        <td>POS</td>
+                                        <td><input type="text" name="data3" size="20" style="width:100%; border:0;" placeholder='"C"'></td>
+                                    </tr>
+                                    <tr>
+                                        <td>AGE</td>
+                                        <td><input type="text" name="data4" size="20" style="width:100%; border:0;" placeholder="23.07"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>GP</td>
+                                        <td><input type="text" name="data5" size="20" style="width:100%; border:0;" placeholder="51"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>MPG</td>
+                                        <td><input type="text" name="data6" size="20" style="width:100%; border:0;" placeholder="30.3"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>MIN</td>
+                                        <td><input type="text" name="data7" size="20" style="width:100%; border:0;" placeholder="63.1"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>USG</td>
+                                        <td><input type="text" name="data8" size="20" style="width:100%; border:0;" placeholder="16.8"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>FTA</td>
+                                        <td><input type="text" name="data9" size="20" style="width:100%; border:0;" placeholder="229"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>FT</td>
+                                        <td><input type="text" name="data10" size="20" style="width:100%; border:0;" placeholder="0.69"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>PA2</td>
+                                        <td><input type="text" name="data11" size="20" style="width:100%; border:0;" placeholder="398"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>P2</td>
+                                        <td><input type="text" name="data12" size="20" style="width:100%; border:0;" placeholder="0.623"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>PA3</td>
+                                        <td><input type="text" name="data13" size="20" style="width:100%; border:0;" placeholder="19"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>P3</td>
+                                        <td><input type="text" name="data14" size="20" style="width:100%; border:0;" placeholder="0.316"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>TS</td>
+                                        <td><input type="text" name="data15" size="20" style="width:100%; border:0;" placeholder="0.649"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>PPG</td>
+                                        <td><input type="text" name="data16" size="20" style="width:100%; border:0;" placeholder="13.2"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>RPG</td>
+                                        <td><input type="text" name="data17" size="20" style="width:100%; border:0;" placeholder="9.9"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>TRB</td>
+                                        <td><input type="text" name="data18" size="20" style="width:100%; border:0;" placeholder="18.3"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>APG</td>
+                                        <td><input type="text" name="data19" size="20" style="width:100%; border:0;" placeholder="1.7"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>AST</td>
+                                        <td><input type="text" name="data20" size="20" style="width:100%; border:0;" placeholder="8.8"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>SPG</td>
+                                        <td><input type="text" name="data21" size="20" style="width:100%; border:0;" placeholder="0.47"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>BPG</td>
+                                        <td><input type="text" name="data22" size="20" style="width:100%; border:0;" placeholder="1.41"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>VI</td>
+                                        <td><input type="text" name="data23" size="20" style="width:100%; border:0;" placeholder="8"></td>
+                                    </tr>
+                                </table>
+                        </div>
+                        <button type="button" class="text_btn_filter btn-call">분류</button>
+                    </div>
+                    <div class="wrap_next ">
+                        <div class="inner_next ">
+                            <span>분류 결과</span>
+                        </div>
+                        <span class="result_alert state_pass"></span>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+    <br/>
+    <br/>
+</body>
+</html>

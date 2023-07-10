@@ -1,0 +1,40 @@
+.navbar{
+    overflow: hidden;
+    display:flex;
+    position: sticky;
+    z-index: 99;
+    top:0px;
+    height: 80px;
+    background-color: white;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    box-shadow: 0 2px 0 rgba(0,0,0,.2);
+}
+.navbar_logo{   
+    font-size: 3.8rem;
+    font-weight: 800; 
+    color: blue;
+}
+.navbar_logo img {
+    position: relative;
+    width: 300px;
+}
+.navbar_menu{
+    display:flex;
+    font-size: 2rem;
+    font-weight: 500;
+}
+.navbar_logo li{
+    position: relative;
+    padding: 1px 8px;
+    bottom: 1px;
+}
+.navbar_menu li{
+    padding:  8px 12px;
+    cursor: pointer;
+}
+
+.navbar_menu li:hover{
+    color: #00AACC;
+}

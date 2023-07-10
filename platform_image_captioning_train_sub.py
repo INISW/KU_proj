@@ -18,10 +18,11 @@ import logging
 from torch.utils.data import Dataset
 import os
 import torch
-from PIL import Image
 import json
-import base64
 import numpy as np
+from PIL import Image
+import base64
+import io
 
 def exec_train(tm):
     import torch
@@ -51,21 +52,6 @@ def exec_train(tm):
             path = dir+'/'+image_name
             imagelist.append(Image.open(path))
         return imagelist
-
-    def super_reso(image,pro_sr,model_sr):
-        import numpy as np
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-        inputs = pro_sr(image, return_tensors="pt").to(device)
-
-        # forward pass
-        with torch.no_grad():
-            outputs = model_sr(**inputs)
-
-        output = outputs.reconstruction.data.squeeze().cpu().float().clamp_(0, 1).numpy()
-        output = np.moveaxis(output, source=0, destination=-1)
-        output = (output * 255.0).round().astype(np.uint8)
-        return Image.fromarray(output)   
     
     def gen_captions(captions,filename):
         gen = []
@@ -80,15 +66,16 @@ def exec_train(tm):
     # 본격 시작 
     ###################################################
     ## 1. 데이터셋 준비(Data Setup)
-    with open(os.path.join(tm.train_data_path, 'annotations/shuffled_captions.json'),'r',encoding='utf-8' or 'cp949') as f: # caption 불러오기
+    with open(os.path.join(tm.train_data_path, 'annotations/shuffled_captions_2.json'),'r',encoding='utf-8' or 'cp949') as f: # caption 불러오기
         captions = json.load(f)
 
     logging.info('[hunmin log] :caption load ok')
-    imagelist = image_list(os.path.join(tm.train_data_path, 'image_dataset'),captions) # train_data_path로 불러오기 
+    imagelist = image_list(os.path.join(tm.train_data_path, 'image_dataset/image_augmented_2'),captions) # train_data_path로 불러오기 
     
     ## 2. 데이터 전처리
-    pro_sr = Swin2SRImageProcessor.from_pretrained(tm.model_path+'/super_resol/preprocessor')
-    model_sr = Swin2SRForImageSuperResolution.from_pretrained(tm.model_path+'/super_resol/swinsr.pt')
+    pro_sr = Swin2SRImageProcessor.from_pretrained("caidas/swin2SR-lightweight-x2-64")
+    model_sr = Swin2SRForImageSuperResolution.from_pretrained("caidas/swin2SR-lightweight-x2-64")
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model_sr.to(device)
     images = []
     for image in imagelist:
@@ -97,13 +84,16 @@ def exec_train(tm):
     model_sr.to('cpu')
 
     data = [{'text':captions[i]['label'],'image':images[i]} for i in range(len(images))] # 최종 학습을 위한 데이터셋
+    mode = "Salesforce/blip-image-captioning-base"
+    processor = BlipProcessor.from_pretrained(mode)
+    #processor = BlipProcessor.from_pretrained(os.path.join(tm.train_data_path, '/preprocessor'))
+
     train_dataset = ImageCaptioningDataset(data[:int(0.8*25000)], processor)
     val_dataset = ImageCaptioningDataset(data[int(0.2):], processor)
 
 
     # model = torch.load(tm.model_path+'init.pt') # 모델 불러오기
     model = BlipForConditionalGeneration.from_pretrained(mode)
-    processor = BlipProcessor.from_pretrained(os.path.join(tm.model_path, 'preprocessor'))
     batch_size = int(tm.param_info['batch_size'])
     epochs = int(tm.param_info['epoch'])
     lr = float(tm.param_info['learning_rate'])
@@ -172,35 +162,80 @@ def exec_train(tm):
 
     history = [train_hist,val_hist]    
     # 학습 결과 표출 함수화 일단 하지 말자. 
-    plot_metrics(tm, history, model,val_dataloader) # epoch별로 보여줄 예정 
+    #plot_metrics(tm, history, model,val_dataloader) # epoch별로 보여줄 예정 
 
-# def exec_init_svc(im):
+def exec_init_svc(im):
 
-#     logging.info('[hunmin log] im.model_path : {}'.format(im.model_path))
+    logging.info('[hunmin log] im.model_path : {}'.format(im.model_path))
     
-#     # 저장 파일 확인
-#     list_files_directories(im.model_path)
+    # 저장 파일 확인
+    list_files_directories(im.model_path)
     
-#     ###########################################################################
-#     ## 학습 모델 준비
-#     ########################################################################### 
+    ###########################################################################
+    ## 학습 모델 준비
+    ########################################################################### 
     
-#     # load the model
-#     model = load_model(os.path.join(im.model_path, 'cnn_model.h5'))
+    # load the model
+    #mode = "Salesforce/blip-image-captioning-base"
+    processor_blip = BlipProcessor.from_pretrained(os.path.join(im.model_path, 'preprocessor/preprocessor'))
+    #processor_blip = BlipProcessor.from_pretrained(mode)
+    model_blip = torch.load(os.path.join(im.model_path, 'model.pt'), map_location=torch.device('cpu'))
+
+    # model = load_model(os.path.join(im.model_path, 'cnn_model.h5'))
     
-#     return {'model' : model}
+    return {'model' : model_blip, 'processor': processor_blip}
 
 
 
 def exec_inference(df, params, batch_id):
     
+    from transformers import BlipProcessor, BlipForConditionalGeneration, Swin2SRImageProcessor, Swin2SRForImageSuperResolution
     ###########################################################################
     ## 4. 추론(Inference)
     ##########################################################################
-    result=0
+    
+    model = params['model']
+    processor = params['processor']
+
+    pro_sr = Swin2SRImageProcessor.from_pretrained("caidas/swin2SR-lightweight-x2-64")
+    model_sr = Swin2SRForImageSuperResolution.from_pretrained("caidas/swin2SR-lightweight-x2-64")
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    model_sr.to(device)
+
+    # 데이터 추출
+    encoded_data = df[0][0]
+    # base64 디코딩
+    decoded_data = base64.b64decode(encoded_data)
+    # 바이트 스트림으로 변환
+    image_stream = io.BytesIO(decoded_data)
+    # 이미지 열기
+    image = Image.open(image_stream)
+    image_list = []
+    image = super_reso(image,pro_sr,model_sr) if image.size[0]<50 or image.size[1]<100 else image
+    model_sr.to('cpu')
+
+    model.eval()
+    generated_ids = model.generate(pixel_values= processor(images=image, return_tensors="pt").to(device).pixel_values, max_length=80)
+    generated_caption = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+
+    result = generated_caption
     return result
 
 
+def super_reso(image,pro_sr,model_sr):
+        import numpy as np
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+        inputs = pro_sr(image, return_tensors="pt").to(device)
+
+        # forward pass
+        with torch.no_grad():
+            outputs = model_sr(**inputs)
+
+        output = outputs.reconstruction.data.squeeze().cpu().float().clamp_(0, 1).numpy()
+        output = np.moveaxis(output, source=0, destination=-1)
+        output = (output * 255.0).round().astype(np.uint8)
+        return Image.fromarray(output)   
 
 # 저장 파일 확인
 def list_files_directories(path):

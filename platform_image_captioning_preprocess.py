@@ -2,7 +2,7 @@
 
 from platform_image_captioning_preprocess_sub import exec_process
 
-from transformers import Swin2SRImageProcessor, BlipProcessor
+from transformers import Swin2SRImageProcessor, Swin2SRForImageSuperResolution, BlipProcessor
 import numpy as np
 import os
 import cv2
@@ -29,11 +29,6 @@ def process_for_train(pm):
     
 
 
-'''
------------------------------------만들어야 하는 함수 하나---------------------------------------------
-
-'''
-
 # 데이텨 변환시 메모리에 standby 시켜놓을 데이터 반환
 # 1. 추론할 데이터의 폴더에서 데이터를 꺼내 추론에 필요한 형태로 메모리에 올려두는 역할
 # 2. 추론에 쓰일 모델 메모리에 올려두는 역할
@@ -44,10 +39,10 @@ def init_svc(im, data):
     # im.meta_path : process_for_train의 pm.meta_path경로를 호출하여 학습때 사용한 전처리 모듈 및 메타 데이터를 불러온다.
     
     # 사용할 모델 및 preprocessor 불러오기
-    processor_blip = BlipProcessor.from_pretrained(im.preprocessor_path)
+    processor_blip = BlipProcessor.from_pretrained(os.path.join(im.model_path, 'preprocessor'))
     model_blip = torch.load(os.path.join(im.model_path, 'blip_all_1e6.pt'), map_location=torch.device('cpu'))
-    pro_sr = Swin2SRImageProcessor.from_pretrained(os.path.join(im.sr_path, 'preprocessor'))
-    model_sr = torch.load(os.path.join(im.sr_path, 'swinsr.pt'), map_location=torch.device('cpu'))
+    pro_sr = Swin2SRImageProcessor.from_pretrained("caidas/swin2SR-lightweight-x2-64")
+    model_sr = Swin2SRForImageSuperResolution.from_pretrained("caidas/swin2SR-lightweight-x2-64")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model_sr.to(device)
@@ -89,14 +84,9 @@ def super_resolution(image,model_sr,pro_sr,device):
     output = (output * 255.0).round().astype(np.uint8)
     return Image.fromarray(output)
 
-'''
----------------------------------만들어야 하는 함수 둘------------------------------------------
-'''
-
-
 
 # 추론 이전 데이터 변환
-# 위 inin_svc에서 올려둔 데이터를 super_resol 및 preprocessor 
+# 위 init_svc에서 올려둔 데이터를 super_resol 및 preprocessor 
 def transform(df, params, batch_id):
     # df => pd.DataFrame : 학습한 모델로 추론할 때 입력한 데이터
     # params => Dict : init_svc의 반환값

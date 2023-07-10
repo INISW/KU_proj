@@ -1,19 +1,19 @@
 # 파일명: image_classification_train_sub.py
 
-class TM:
-    param_info = {}
-    def __init__(self):
-        self.train_data_path = './meta_data/image'
-        self.model_path = './meta_data'
-        self.label_path = './meta_data/annotations'
-        self.output_path = './mata_data/output'
-        # 사용자 param 사용시 입력
-        self.param_info['batch_size'] = 16
-        self.param_info['epoch'] = 30
-        self.param_info['learning_rate'] = 1e-6
-        self.param_info['optimizer'] = 0
+# class TM:
+#     param_info = {}
+#     def __init__(self):
+#         self.train_data_path = './meta_data/image'
+#         self.model_path = './meta_data'
+#         self.label_path = './meta_data/annotations'
+#         self.output_path = './meta_data/output'
+#         # 사용자 param 사용시 입력
+#         self.param_info['batch_size'] = 16
+#         self.param_info['epoch'] = 30
+#         self.param_info['learning_rate'] = 1e-6
+#         self.param_info['optimizer'] = 0
 
-tm = TM
+# tm = TM
 import logging
 from torch.utils.data import Dataset
 import os
@@ -26,7 +26,7 @@ import numpy as np
 def exec_train(tm):
     import torch
     import json
-    from transformers import BlipProcessor, Swin2SRImageProcessor, Swin2SRForImageSuperResolution
+    from transformers import BlipProcessor, BlipForConditionalGeneration, Swin2SRImageProcessor, Swin2SRForImageSuperResolution
     from torch.utils.data import DataLoader
 
     class ImageCaptioningDataset(Dataset):
@@ -80,12 +80,12 @@ def exec_train(tm):
     # 본격 시작 
     ###################################################
     ## 1. 데이터셋 준비(Data Setup)
-    with open(tm.label_path+'/shuffled_captions.json','r',encoding='utf-8' or 'cp949') as f: # caption 불러오기
+    with open(os.path.join(tm.train_data_path, 'annotations/shuffled_captions.json'),'r',encoding='utf-8' or 'cp949') as f: # caption 불러오기
         captions = json.load(f)
-    
-    logging.info('[hunmin log] :caption load ok')
-    imagelist = image_list(tm.train_data_path,captions) # train_data_path로 불러오기 
 
+    logging.info('[hunmin log] :caption load ok')
+    imagelist = image_list(os.path.join(tm.train_data_path, 'image_dataset'),captions) # train_data_path로 불러오기 
+    
     ## 2. 데이터 전처리
     pro_sr = Swin2SRImageProcessor.from_pretrained(tm.model_path+'/super_resol/preprocessor')
     model_sr = Swin2SRForImageSuperResolution.from_pretrained(tm.model_path+'/super_resol/swinsr.pt')
@@ -101,12 +101,13 @@ def exec_train(tm):
     val_dataset = ImageCaptioningDataset(data[int(0.2):], processor)
 
 
-    model = torch.load(tm.model_path+'init.pt') # 모델 불러오기
-    processor = BlipProcessor.from_pretrained(tm.preprocessor_path)
+    # model = torch.load(tm.model_path+'init.pt') # 모델 불러오기
+    model = BlipForConditionalGeneration.from_pretrained(mode)
+    processor = BlipProcessor.from_pretrained(os.path.join(tm.model_path, 'preprocessor'))
     batch_size = int(tm.param_info['batch_size'])
     epochs = int(tm.param_info['epoch'])
     lr = float(tm.param_info['learning_rate'])
-    val_cpath = tm.caption_path
+    val_cpath = tm.model_path
 
     train_dataloader = DataLoader(train_dataset,shuffle=False,batch_size = batch_size)
     val_dataloader = DataLoader(val_dataset,shuffle=False,batch_size = batch_size)

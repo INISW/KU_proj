@@ -16,22 +16,22 @@ def exec_process(pm):
     # pm.source_path의 dataset.zip 파일을 
     # pm.target_path의 dataset 폴더에 압축을 풀어준다.
     # 1. 이미지 데이터
-    my_zip_path_1 = os.path.join(pm.source_path,'image_augmented.zip') 
+    my_zip_path_1 = os.path.join(pm.source_path,'image_augmented_2.zip') 
     extract_zip_file_1 = zipfile.ZipFile(my_zip_path_1)
     extract_zip_file_1.extractall(os.path.join(pm.target_path, 'image_dataset'))
     extract_zip_file_1.close()
 
     # 2. 캡션(라벨) 데이터
-    my_zip_path_2 = os.path.join(pm.source_path, 'annotations.zip') 
+    my_zip_path_2 = os.path.join(pm.source_path, 'annotations_2.zip') 
     extract_zip_file_2 = zipfile.ZipFile(my_zip_path_2)    
     extract_zip_file_2.extractall(os.path.join(pm.target_path, 'annotations'))
     extract_zip_file_2.close()
 
-    # 3. preprocessor
-    my_zip_path_3 = os.path.join(pm.source_path, 'preprocessor.zip') # 전처리 수행 모듈
-    extract_zip_file_3 = zipfile.ZipFile(my_zip_path_3)    
-    extract_zip_file_3.extractall(os.path.join(pm.target_path, 'preprocessor'))
-    extract_zip_file_3.close()
+    # # 3. preprocessor
+    # my_zip_path_3 = os.path.join(pm.source_path, 'preprocessor.zip') # 전처리 수행 모듈
+    # extract_zip_file_3 = zipfile.ZipFile(my_zip_path_3)    
+    # extract_zip_file_3.extractall(os.path.join(pm.target_path, 'preprocessor'))
+    # extract_zip_file_3.close()
 
     
     # 저장 파일 확인

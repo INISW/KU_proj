@@ -146,27 +146,6 @@ def exec_train(tm):
     # 학습 결과 표출 함수화 일단 하지 말자. 
     #plot_metrics(tm, history, model,val_dataloader, preprocessor) # epoch별로 보여줄 예정 
 
-
-
-def exec_init_svc(im):
-    from transformers import BlipProcessor
-    logging.info('[hunmin log] im.model_path : {}'.format(im.model_path))
-    
-    # 저장 파일 확인
-    list_files_directories(im.model_path)
-    
-    ###########################################################################
-    ## 학습 모델 준비
-    ########################################################################### 
-    
-    # load the model
-    mode = "Salesforce/blip-image-captioning-base"
-    processor_blip = BlipProcessor.from_pretrained(mode)
-    model_blip = torch.load(os.path.join(im.model_path, 'model.pt'), map_location=torch.device('cpu'))
-    
-    return {'model' : model_blip, 'processor': processor_blip}
-
-
 def super_reso(image,pro_sr,model_sr):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -246,6 +225,24 @@ def plot_metrics(tm, history, model,val_dataloader, processor):
 
 
 ###########################################################################
+    ## 학습 모델 준비
+###########################################################################
+
+def exec_init_svc(im):
+    logging.info('[hunmin log] im.model_path : {}'.format(im.model_path))
+    
+    # 저장 파일 확인
+    list_files_directories(im.model_path) 
+    
+    # load the model
+    mode = "Salesforce/blip-image-captioning-base"
+    processor_blip = BlipProcessor.from_pretrained(mode)
+    model_blip = torch.load(os.path.join(im.model_path, 'model.pt'), map_location=torch.device('cpu'))
+    
+    return {'model' : model_blip, 'processor': processor_blip}
+
+
+###########################################################################
 ## exec_inference(df, params, batch_id)함수, 하위 호출 함수 
 ###########################################################################
 
@@ -294,16 +291,13 @@ def exec_inference(df, params, batch_id):
     # 비디오에서 사람 객체 이미지 크롭 및 SR 진행
     pro_sr = Swin2SRImageProcessor.from_pretrained("caidas/swin2SR-lightweight-x2-64")
     model_sr = Swin2SRForImageSuperResolution.from_pretrained("caidas/swin2SR-lightweight-x2-64")
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model_sr.to(device)
-
     video = df
     cap =cv2.VideoCapture(video)
     images = []
     for _, info in table.iterrows(): # 이미지 전체 다 가져오기
         image = Image.fromarray(cropping(cap, info['frame_id'], [info['x1'],info['y1'],info['x2'],info['y2']]))
         # 작은 이미지의 경우 SR 적용 
-        image = super_reso(image,model_sr,pro_sr,device) if image.size[0]<50 or image.size[1]<100 else image 
+        image = super_reso(image,pro_sr,model_sr) if image.size[0]<50 or image.size[1]<100 else image 
         images.append(image)
 
     # 캡션 생성 및 table에 객체 id별 캡션 넣어주기
@@ -624,7 +618,6 @@ def video_tracking(input_type, table, input_keyword):
     return result_list
 
 
-# 캡션 생성 함수
 def multi_image_caption(params, images): 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = params["model"].to(device)
@@ -637,10 +630,12 @@ def multi_image_caption(params, images):
         captions.append(single_image_caption(image,model,vis_processors,decode,device)) # 이미지 captioning
     return captions
 
+
 def single_image_caption(image, model, vis_processors, decode, device):
     generated_ids = model.generate(pixel_values= vis_processors(images=image, return_tensors="pt").to(device).pixel_values,max_length=300)
     caption= decode(generated_ids, skip_special_tokens=True)[0]
     return caption
+
 
 def cropping(cap, frame_id, box):
 

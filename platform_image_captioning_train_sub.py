@@ -246,32 +246,40 @@ def exec_init_svc(im):
 ## exec_inference(df, params, batch_id)함수, 하위 호출 함수 
 ###########################################################################
 
-import json, os, cv2, time, sys
+import logging, torch
+from torch.utils.data import Dataset
+import os, json, cv2, time, sys
+from PIL import Image
+import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+from PIL import Image
+import tensorflow as tf
+import tensorflow.keras as keras
+from tensorflow.compat.v1 import ConfigProto, InteractiveSession
+
+from platform_image_captioning_preprocess import init_svc
+
 from absl import flags
 from absl.flags import FLAGS
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-import tensorflow as tf
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     print("len(physical_devices): ", len(physical_devices))
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
+import zipfile
+with zipfile.ZipFile('yolov4_deepsort.zip', 'r') as zip_ref:
+    zip_ref.extractall('yolov4_deepsort')
+
 import yolov4_deepsort.core.utils as utils
 from yolov4_deepsort.core.yolov4 import filter_boxes
 from yolov4_deepsort.core.config import cfg
-from PIL import Image
-import numpy as np
-import tensorflow.keras as keras
-import matplotlib.pyplot as plt
-from tensorflow.compat.v1 import ConfigProto
-from tensorflow.compat.v1 import InteractiveSession
+
 from yolov4_deepsort.deep_sort import preprocessing, nn_matching
 from yolov4_deepsort.deep_sort.detection import Detection
 from yolov4_deepsort.deep_sort.tracker import Tracker
 from yolov4_deepsort.tools import generate_detections as gdet
-
-import torch
 
 def exec_inference(df, params, batch_id):
     
@@ -313,7 +321,7 @@ def exec_inference(df, params, batch_id):
 
 
         flags.DEFINE_string('framework', 'tf', 'tf, tflite, trt')
-        flags.DEFINE_string('weights', './yolov4_deepsort1/checkpoints/yolov4-tiny-416','path to weights file')
+        flags.DEFINE_string('weights', './yolov4_deepsort/checkpoints/yolov4-tiny-416','path to weights file')
         flags.DEFINE_integer('size', 416, 'resize images to')
         flags.DEFINE_boolean('tiny', True, 'yolo or yolo-tiny')
         flags.DEFINE_string('model', 'yolov4', 'yolov3 or yolov4')
@@ -336,7 +344,7 @@ def exec_inference(df, params, batch_id):
         
         # initialize deep sort
         # model_filename = 'C:\\Users\\Sihyun\\Desktop\\INISW\\project\\sihyun_track_test\\yolov4-deepsort-master\\model_data\\mars-small128.pb'
-        model_filename = './yolov4_deepsort1/model_data/mars-small128.pb'
+        model_filename = './yolov4_deepsort/model_data/mars-small128.pb'
         encoder = gdet.create_box_encoder(model_filename, batch_size=1)
         # calculate cosine distance metric
         metric = nn_matching.NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget)
@@ -600,7 +608,7 @@ def exec_inference(df, params, batch_id):
     ###########################################################################
     ## 4. 추론(Inference) 시작
     ###########################################################################
-    
+
     result_list = video_tracking(input_type='A', table=None, input_keyword='')
     result = pd.DataFrame(result_list)
 

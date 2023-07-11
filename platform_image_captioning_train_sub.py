@@ -12,6 +12,41 @@ import base64
 import io
 from transformers import BlipProcessor, BlipForConditionalGeneration, Swin2SRImageProcessor, Swin2SRForImageSuperResolution
 
+import logging, torch
+from torch.utils.data import Dataset
+import os, json, cv2, time, sys
+from PIL import Image
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from PIL import Image
+import tensorflow as tf
+import tensorflow.keras as keras
+from tensorflow.compat.v1 import ConfigProto, InteractiveSession
+
+from platform_image_captioning_preprocess import init_svc
+
+from absl import flags
+from absl.flags import FLAGS
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+if len(physical_devices) > 0:
+    print("len(physical_devices): ", len(physical_devices))
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
+import zipfile
+with zipfile.ZipFile('yolov4_deepsort.zip', 'r') as zip_ref:
+    zip_ref.extractall('yolov4_deepsort')
+
+import yolov4_deepsort.core.utils as utils
+from yolov4_deepsort.core.yolov4 import filter_boxes
+from yolov4_deepsort.core.config import cfg
+
+from yolov4_deepsort.deep_sort import preprocessing, nn_matching
+from yolov4_deepsort.deep_sort.detection import Detection
+from yolov4_deepsort.deep_sort.tracker import Tracker
+from yolov4_deepsort.tools import generate_detections as gdet
+
 def exec_train(tm):
     
     class ImageCaptioningDataset(Dataset):
@@ -246,43 +281,20 @@ def exec_init_svc(im):
 ## exec_inference(df, params, batch_id)함수, 하위 호출 함수 
 ###########################################################################
 
-import logging, torch
-from torch.utils.data import Dataset
-import os, json, cv2, time, sys
-from PIL import Image
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from PIL import Image
-import tensorflow as tf
-import tensorflow.keras as keras
-from tensorflow.compat.v1 import ConfigProto, InteractiveSession
 
-from platform_image_captioning_preprocess import init_svc
-
-from absl import flags
-from absl.flags import FLAGS
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-physical_devices = tf.config.experimental.list_physical_devices('GPU')
-if len(physical_devices) > 0:
-    print("len(physical_devices): ", len(physical_devices))
-    tf.config.experimental.set_memory_growth(physical_devices[0], True)
-
-import zipfile
-with zipfile.ZipFile('yolov4_deepsort.zip', 'r') as zip_ref:
-    zip_ref.extractall('yolov4_deepsort')
-
-import yolov4_deepsort.core.utils as utils
-from yolov4_deepsort.core.yolov4 import filter_boxes
-from yolov4_deepsort.core.config import cfg
-
-from yolov4_deepsort.deep_sort import preprocessing, nn_matching
-from yolov4_deepsort.deep_sort.detection import Detection
-from yolov4_deepsort.deep_sort.tracker import Tracker
-from yolov4_deepsort.tools import generate_detections as gdet
 
 def exec_inference(df, params, batch_id):
     
+    def decode_base64_video(encoded_video, output_file):
+        # Base64 데이터를 디코드하여 바이너리 데이터로 변환
+        decoded_video = base64.b64decode(encoded_video)
+
+        # 변환된 바이너리 데이터를 파일로 저장
+        with open(output_file, 'wb') as file:
+            file.write(decoded_video)
+
+        return decoded_video
+
     def draw_box(table, input_keyword):
         table_len = len(table)
 
@@ -331,8 +343,8 @@ def exec_inference(df, params, batch_id):
         flags.DEFINE_boolean('dont_show', False, 'dont show video output')
         flags.DEFINE_boolean('info', False, 'show detailed info of tracked objects')
         flags.DEFINE_boolean('count', False, 'count objects being tracked on screen')
-        flags.DEFINE_string('video', 'demo4.mp4', 'path to input video or set to 0 for webcam')
-        flags.DEFINE_string('output', 'demo4_test.mp4', 'path to output video')
+        flags.DEFINE_string('video', 'input_video.mp4', 'path to input video or set to 0 for webcam')
+        flags.DEFINE_string('output', 'output_video.mp4', 'path to output video')
 
         FLAGS = flags.FLAGS
         FLAGS(sys.argv)
@@ -609,6 +621,12 @@ def exec_inference(df, params, batch_id):
     ## 4. 추론(Inference) 시작
     ###########################################################################
 
+    # 디코딩된 동영상을 저장할 파일 경로 및 이름
+    output_file = "input_video.mp4"
+    # 디코딩 함수 호출
+    input_video = decode_base64_video(df, output_file)
+    video_file = io.BytesIO(input_video)
+
     result_list = video_tracking(input_type='A', table=None, input_keyword='')
     result = pd.DataFrame(result_list)
 
@@ -621,8 +639,8 @@ def exec_inference(df, params, batch_id):
     
     pro_sr = Swin2SRImageProcessor.from_pretrained("caidas/swin2SR-lightweight-x2-64")
     model_sr = Swin2SRForImageSuperResolution.from_pretrained("caidas/swin2SR-lightweight-x2-64")
-    video = df # 업로드된 파일(비디오)
-    cap =cv2.VideoCapture(video)
+
+    cap =cv2.VideoCapture(video_file)
     images = []
     for _, info in table.iterrows(): # 이미지 전체 다 가져오기
         image = Image.fromarray(cropping(cap, info['frame_id'], [info['x1'],info['y1'],info['x2'],info['y2']]))

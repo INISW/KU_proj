@@ -1,0 +1,189 @@
+.hunminCase28 *{
+    box-sizing: border-box;
+}
+
+.hunminCase28{
+    width: 1200px;
+    min-width: 1200px;
+    background: #EAEEFF;
+    color: #222222;
+    font-family: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.hunminCase28 table{
+    border-spacing: 18px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.hunminCase28 .humin28Title{
+    margin-top: 5%;
+    margin-bottom: 3%;
+    color: #4E5E9D;
+    font-weight: 700;
+    font-size: 48px;
+    text-align: center;
+}
+
+.huminCase28 .divider{
+    text-align: center;
+}
+
+.hunminCase28 #backslash{
+    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="0" x2="100%" y2="100%" stroke="gray" /></svg>');
+
+}
+#backslash { 
+    text-align: left;
+    vertical-align: bottom;
+    font-size: 28px;
+    color: #4E5E9D;
+    font-weight: 500;
+}
+#backslash div {
+    text-align: right;
+    vertical-align: top;
+}
+
+.hunminCase28 .columnHeader{
+    text-align: center;
+}
+
+.hunminCase28 .rowHeader{
+    text-align: right;
+    padding-right: 24px;
+    vertical-align: middle;
+}
+
+.hunminCase28 .headerCell{
+    display: block;
+    /* color: #838BAA; */
+    font-size: 28px;
+    font-weight: 500;
+    padding: 12px 0;
+    white-space: nowrap;
+}
+
+.hunminCase28 th{
+    empty-cells: show;
+}
+
+.hunminCase28 td{
+    padding: 3px;
+    text-align: center;
+}
+
+.hunminCase28 td span{
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: center;
+    align-items: center;
+    background: #fff;
+    height: 100px;
+    min-width: 200px;
+    /* border: 1px solid currentColor; */
+    border-radius: 8px;
+    color: inherit;
+    font-size: 18px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.5s ease-in-out 0s;
+}
+
+.hunminCase28 td span:hover{
+    background-color: #8bbbff;
+    box-shadow: 0px 10px 18px rgba(46, 89, 229, 0.4);
+    transform: translateY(-3px);
+}
+
+.modal{
+    display:none;
+    position:fixed; 
+    width:100%;
+    height:100%;
+    top:0;
+    left:0;
+    background:rgba(0,0,0,0.1);
+}
+
+.modal_content{
+    width:400px;
+    min-height: 100px;
+    height: auto;
+    background:#fff; 
+    border-radius:10px;
+    position: absolute;
+    vertical-align: middle;
+    box-sizing:border-box; 
+    padding:20px 10px;
+    line-height:27px; 
+    display:none;
+
+}
+
+.modal_title{
+    font-size: 30px;
+    font-weight: bold;
+    padding-bottom: 10px;
+    text-align: center;
+    line-height: 40px;
+    color: #0f52ff;
+}
+
+.guide_list, .guide_list ul{
+    list-style: none;
+    padding-left:35px;
+}
+
+.guide_list *:before{
+    width:15px;
+    height:15px;
+}
+
+.guide_list label, p{
+    font-family: NotoSansKrMedium, sans-serif !important;
+    font-weight: bold;
+    font-size: 18px;
+    color: #070707;
+}
+
+.modal_subTitle {
+    background-color: #eaeeff;
+    padding: 5px;
+    padding-left:20px;
+    margin-bottom: 5px;
+    margin-top: 10px;
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.guide_list label:hover{
+    color: #00AACC;
+    font-weight: bold;
+}
+
+
+.guide_list>li{
+    padding-bottom:8px;
+}
+
+
+.close {
+    font-weight: 400;
+    font-size: 15px;
+    display: inline-block;
+    padding: 5px 10px;
+    margin-top: 30px;
+    vertical-align: top;
+    color:#666;
+    border-radius: 5px;
+    transition: all 0.3s ease 0s;
+}
+.close:hover {
+    background-color: #d4d4d4;
+}

@@ -38,51 +38,51 @@ def init_svc(im, data):
     # rule : 전처리 규칙정보 -> 생략
     # im.meta_path : process_for_train의 pm.meta_path경로를 호출하여 학습때 사용한 전처리 모듈 및 메타 데이터를 불러온다.
     
-    # 사용할 모델 및 preprocessor 불러오기
-    processor_blip = BlipProcessor.from_pretrained(os.path.join(im.model_path, 'preprocessor'))
-    model_blip = torch.load(os.path.join(im.model_path, 'blip_all_1e6.pt'), map_location=torch.device('cpu'))
-    pro_sr = Swin2SRImageProcessor.from_pretrained("caidas/swin2SR-lightweight-x2-64")
-    model_sr = Swin2SRForImageSuperResolution.from_pretrained("caidas/swin2SR-lightweight-x2-64")
+    # # 사용할 모델 및 preprocessor 불러오기
+    # processor_blip = BlipProcessor.from_pretrained(os.path.join(im.model_path, 'preprocessor'))
+    # model_blip = torch.load(os.path.join(im.model_path, 'blip_all_1e6.pt'), map_location=torch.device('cpu'))
+    # pro_sr = Swin2SRImageProcessor.from_pretrained("caidas/swin2SR-lightweight-x2-64")
+    # model_sr = Swin2SRForImageSuperResolution.from_pretrained("caidas/swin2SR-lightweight-x2-64")
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model_sr.to(device)
+    # device = "cuda" if torch.cuda.is_available() else "cpu"
+    # model_sr.to(device)
 
-    # 비디오에서 이미지 크롭한 후 메모리에 스탠바이
-    video = "./yolov4_deepsort/data/video/demo4.mp4"
-    cap =cv2.VideoCapture(video)
-    images = []
-    for _, info in data.iterrows(): # 이미지 전체 다 가져오기
-        image = Image.fromarray(cropping(cap, info['frame_id'], [info['x1'],info['y1'],info['x2'],info['y2']]))
-        # 작은 이미지의 경우 SR 적용 
-        image = super_resolution(image,model_sr,pro_sr,device) if image.size[0]<50 or image.size[1]<100 else image 
-        images.append(image)
+    # # 비디오에서 이미지 크롭한 후 메모리에 스탠바이
+    # video = "./yolov4_deepsort/data/video/demo4.mp4"
+    # cap =cv2.VideoCapture(video)
+    # images = []
+    # for _, info in data.iterrows(): # 이미지 전체 다 가져오기
+    #     image = Image.fromarray(cropping(cap, info['frame_id'], [info['x1'],info['y1'],info['x2'],info['y2']]))
+    #     # 작은 이미지의 경우 SR 적용 
+    #     image = super_resolution(image,model_sr,pro_sr,device) if image.size[0]<50 or image.size[1]<100 else image 
+    #     images.append(image)
 
     # return : dict형태로 반환하며 이는 transform의 params가 된다.
     # ex) init_svc(im, rule): return {'meta_path' : im.meta_path}
     #     transform(df, params, batch_id): meta_path = params['meta_path']
-    return {'model_blip': model_blip, 'processor_blip': processor_blip,'cropped_images':images}
+    #return {'model_blip': model_blip, 'processor_blip': processor_blip,'cropped_images':images}
+    return {}
 
-
-def cropping(cap, frame_id, box):
+# def cropping(cap, frame_id, box):
     
-    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_id) # 이미지 불러오기
-    T, image = cap.read()
-    image = image[box[1]:box[3],box[0]:box[2]] if T else print("error")
+#     cap.set(cv2.CAP_PROP_POS_FRAMES, frame_id) # 이미지 불러오기
+#     T, image = cap.read()
+#     image = image[box[1]:box[3],box[0]:box[2]] if T else print("error")
 
-    return cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if T else None
+#     return cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if T else None
 
 
-def super_resolution(image,model_sr,pro_sr,device):
-    inputs = pro_sr(image, return_tensors="pt").to(device)
+# def super_resolution(image,model_sr,pro_sr,device):
+#     inputs = pro_sr(image, return_tensors="pt").to(device)
 
-    # forward pass
-    with torch.no_grad():
-        outputs = model_sr(**inputs)
+#     # forward pass
+#     with torch.no_grad():
+#         outputs = model_sr(**inputs)
 
-    output = outputs.reconstruction.data.squeeze().cpu().float().clamp_(0, 1).numpy()
-    output = np.moveaxis(output, source=0, destination=-1)
-    output = (output * 255.0).round().astype(np.uint8)
-    return Image.fromarray(output)
+#     output = outputs.reconstruction.data.squeeze().cpu().float().clamp_(0, 1).numpy()
+#     output = np.moveaxis(output, source=0, destination=-1)
+#     output = (output * 255.0).round().astype(np.uint8)
+#     return Image.fromarray(output)
 
 
 # 추론 이전 데이터 변환

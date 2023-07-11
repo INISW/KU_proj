@@ -27,11 +27,11 @@ def exec_process(pm):
     extract_zip_file_2.extractall(os.path.join(pm.target_path, 'annotations'))
     extract_zip_file_2.close()
 
-    # # 3. preprocessor
-    # my_zip_path_3 = os.path.join(pm.source_path, 'preprocessor.zip') # 전처리 수행 모듈
-    # extract_zip_file_3 = zipfile.ZipFile(my_zip_path_3)    
-    # extract_zip_file_3.extractall(os.path.join(pm.target_path, 'preprocessor'))
-    # extract_zip_file_3.close()
+    # 3. preprocessor
+    my_zip_path_3 = os.path.join(pm.source_path, 'preprocessor.zip') # 전처리 수행 모듈
+    extract_zip_file_3 = zipfile.ZipFile(my_zip_path_3)    
+    extract_zip_file_3.extractall(os.path.join(pm.target_path, 'preprocessor'))
+    extract_zip_file_3.close()
 
     
     # 저장 파일 확인

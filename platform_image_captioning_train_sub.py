@@ -1,19 +1,5 @@
 # 파일명: image_classification_train_sub.py
 
-# class TM:
-#     param_info = {}
-#     def __init__(self):
-#         self.train_data_path = './meta_data/image'
-#         self.model_path = './meta_data'
-#         self.label_path = './meta_data/annotations'
-#         self.output_path = './meta_data/output'
-#         # 사용자 param 사용시 입력
-#         self.param_info['batch_size'] = 16
-#         self.param_info['epoch'] = 30
-#         self.param_info['learning_rate'] = 1e-6
-#         self.param_info['optimizer'] = 0
-
-# tm = TM
 import logging
 from torch.utils.data import Dataset
 import os
@@ -84,15 +70,14 @@ def exec_train(tm):
     model_sr.to('cpu')
 
     data = [{'text':captions[i]['label'],'image':images[i]} for i in range(len(images))] # 최종 학습을 위한 데이터셋
+    processor = BlipProcessor.from_pretrained(os.path.join(tm.train_data_path, 'preprocessor/preprocessor'))
+
+    train_dataset = ImageCaptioningDataset(data[:int(0.8*100)], processor)
+    val_dataset = ImageCaptioningDataset(data[int(0.8*100):], processor)
+
+
+    # 모델 불러오기
     mode = "Salesforce/blip-image-captioning-base"
-    processor = BlipProcessor.from_pretrained(mode)
-    #processor = BlipProcessor.from_pretrained(os.path.join(tm.train_data_path, '/preprocessor'))
-
-    train_dataset = ImageCaptioningDataset(data[:int(0.8*25000)], processor)
-    val_dataset = ImageCaptioningDataset(data[int(0.2):], processor)
-
-
-    # model = torch.load(tm.model_path+'init.pt') # 모델 불러오기
     model = BlipForConditionalGeneration.from_pretrained(mode)
     batch_size = int(tm.param_info['batch_size'])
     epochs = int(tm.param_info['epoch'])
@@ -120,7 +105,6 @@ def exec_train(tm):
         Loss = 0
 
         for idx, batch in enumerate(train_dataloader):
-            model.train()
             input_ids = batch.pop("input_ids").to(device)
             pixel_values = batch.pop("pixel_values").to(device)
             outputs = model(input_ids=input_ids,pixel_values=pixel_values, labels=input_ids)
@@ -162,10 +146,12 @@ def exec_train(tm):
 
     history = [train_hist,val_hist]    
     # 학습 결과 표출 함수화 일단 하지 말자. 
-    #plot_metrics(tm, history, model,val_dataloader) # epoch별로 보여줄 예정 
+    #plot_metrics(tm, history, model,val_dataloader, preprocessor) # epoch별로 보여줄 예정 
+
+
 
 def exec_init_svc(im):
-
+    from transformers import BlipProcessor
     logging.info('[hunmin log] im.model_path : {}'.format(im.model_path))
     
     # 저장 파일 확인
@@ -176,12 +162,9 @@ def exec_init_svc(im):
     ########################################################################### 
     
     # load the model
-    #mode = "Salesforce/blip-image-captioning-base"
-    processor_blip = BlipProcessor.from_pretrained(os.path.join(im.model_path, 'preprocessor/preprocessor'))
-    #processor_blip = BlipProcessor.from_pretrained(mode)
+    mode = "Salesforce/blip-image-captioning-base"
+    processor_blip = BlipProcessor.from_pretrained(mode)
     model_blip = torch.load(os.path.join(im.model_path, 'model.pt'), map_location=torch.device('cpu'))
-
-    # model = load_model(os.path.join(im.model_path, 'cnn_model.h5'))
     
     return {'model' : model_blip, 'processor': processor_blip}
 
@@ -189,36 +172,37 @@ def exec_init_svc(im):
 
 def exec_inference(df, params, batch_id):
     
-    from transformers import BlipProcessor, BlipForConditionalGeneration, Swin2SRImageProcessor, Swin2SRForImageSuperResolution
-    ###########################################################################
-    ## 4. 추론(Inference)
-    ##########################################################################
+    # from transformers import Swin2SRImageProcessor, Swin2SRForImageSuperResolution
+    # ###########################################################################
+    # ## 4. 추론(Inference)
+    # ##########################################################################
     
-    model = params['model']
-    processor = params['processor']
+    # model = params['model']
+    # processor = params['processor']
 
-    pro_sr = Swin2SRImageProcessor.from_pretrained("caidas/swin2SR-lightweight-x2-64")
-    model_sr = Swin2SRForImageSuperResolution.from_pretrained("caidas/swin2SR-lightweight-x2-64")
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model_sr.to(device)
+    # pro_sr = Swin2SRImageProcessor.from_pretrained("caidas/swin2SR-lightweight-x2-64")
+    # model_sr = Swin2SRForImageSuperResolution.from_pretrained("caidas/swin2SR-lightweight-x2-64")
+    # device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    # model_sr.to(device)
 
-    # 데이터 추출
-    encoded_data = df[0][0]
-    # base64 디코딩
-    decoded_data = base64.b64decode(encoded_data)
-    # 바이트 스트림으로 변환
-    image_stream = io.BytesIO(decoded_data)
-    # 이미지 열기
-    image = Image.open(image_stream)
-    image_list = []
-    image = super_reso(image,pro_sr,model_sr) if image.size[0]<50 or image.size[1]<100 else image
-    model_sr.to('cpu')
+    # # 데이터 추출
+    # encoded_data = df[0][0]
+    # # base64 디코딩
+    # decoded_data = base64.b64decode(encoded_data)
+    # # 바이트 스트림으로 변환
+    # image_stream = io.BytesIO(decoded_data)
+    # # 이미지 열기
+    # image = Image.open(image_stream)
+    # image_list = []
+    # image = super_reso(image,pro_sr,model_sr) if image.size[0]<50 or image.size[1]<100 else image
+    # model_sr.to('cpu')
 
-    model.eval()
-    generated_ids = model.generate(pixel_values= processor(images=image, return_tensors="pt").to(device).pixel_values, max_length=80)
-    generated_caption = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+    # model.eval()
+    # generated_ids = model.generate(pixel_values= processor(images=image, return_tensors="pt").to(device).pixel_values, max_length=80)
+    # generated_caption = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
-    result = generated_caption
+    # result = generated_caption
+    # logging.info('[hunmin log] result : {}'.format(result))
     return result
 
 
@@ -299,3 +283,10 @@ def plot_metrics(tm, history, model,val_dataloader, processor):
     eval_results['loss'] = val/len(val_dataloader)
     tm.save_result_metrics(eval_results)
     logging.info('[user log] accuracy and loss curve plot for platform')
+
+
+###########################################################################
+## exec_inference(df, params, batch_id) 호출 함수 
+###########################################################################
+
+def draw_box(table, input_keyword):

@@ -7,45 +7,35 @@ import os
 import torch
 import json
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 from PIL import Image
 import base64
 import io
 from transformers import BlipProcessor, BlipForConditionalGeneration, Swin2SRImageProcessor, Swin2SRForImageSuperResolution
-
-import logging, torch
-from torch.utils.data import Dataset
-import os, json, cv2, time, sys
-from PIL import Image
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from PIL import Image
+import cv2, time, sys
 import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow.compat.v1 import ConfigProto, InteractiveSession
-
-from platform_image_captioning_preprocess import init_svc
 
 from absl import flags
 from absl.flags import FLAGS
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
-    print("len(physical_devices): ", len(physical_devices))
+    logging.info("len(physical_devices): ", len(physical_devices))
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
+    
+import core.utils as utils
+from core.yolov4 import filter_boxes
+from core.config import cfg
 
-import zipfile
-with zipfile.ZipFile('yolov4_deepsort.zip', 'r') as zip_ref:
-    zip_ref.extractall('yolov4_deepsort')
+from deep_sort import preprocessing, nn_matching
+from deep_sort.detection import Detection
+from deep_sort.tracker import Tracker
+from tools import generate_detections as gdet
 
-import yolov4_deepsort.core.utils as utils
-from yolov4_deepsort.core.yolov4 import filter_boxes
-from yolov4_deepsort.core.config import cfg
-
-from yolov4_deepsort.deep_sort import preprocessing, nn_matching
-from yolov4_deepsort.deep_sort.detection import Detection
-from yolov4_deepsort.deep_sort.tracker import Tracker
-from yolov4_deepsort.tools import generate_detections as gdet
+logging.basicConfig(level=logging.INFO)
 
 def exec_train(tm):
     
@@ -85,11 +75,11 @@ def exec_train(tm):
     # 본격 시작 
     ###################################################
     ## 1. 데이터셋 준비(Data Setup)
-    with open(os.path.join(tm.train_data_path, 'annotations/shuffled_captions_2.json'),'r',encoding='utf-8' or 'cp949') as f: # caption 불러오기
+    with open(os.path.join(tm.train_data_path, 'dataset/annotations/shuffled_captions.json'),'r',encoding='utf-8' or 'cp949') as f: # caption 불러오기
         captions = json.load(f)
 
     logging.info('[hunmin log] :caption load ok')
-    imagelist = image_list(os.path.join(tm.train_data_path, 'image_dataset/image_augmented_2'),captions) # train_data_path로 불러오기 
+    imagelist = image_list(os.path.join(tm.train_data_path, 'dataset/image_augmented'),captions) # train_data_path로 불러오기 
     
     ## 2. 데이터 전처리
     pro_sr = Swin2SRImageProcessor.from_pretrained("caidas/swin2SR-lightweight-x2-64")
@@ -103,7 +93,7 @@ def exec_train(tm):
     model_sr.to('cpu')
 
     data = [{'text':captions[i]['label'],'image':images[i]} for i in range(len(images))] # 최종 학습을 위한 데이터셋
-    processor = BlipProcessor.from_pretrained(os.path.join(tm.train_data_path, 'preprocessor/preprocessor'))
+    processor = BlipProcessor.from_pretrained(os.path.join(tm.train_data_path, 'dataset/preprocessor'))
 
     train_dataset = ImageCaptioningDataset(data[:int(0.8*100)], processor)
     val_dataset = ImageCaptioningDataset(data[int(0.8*100):], processor)
@@ -179,7 +169,7 @@ def exec_train(tm):
 
     history = [train_hist,val_hist]    
     # 학습 결과 표출 함수화 일단 하지 말자. 
-    #plot_metrics(tm, history, model,val_dataloader, preprocessor) # epoch별로 보여줄 예정 
+    #plot_metrics(tm, history, model,val_dataloader, processor) # epoch별로 보여줄 예정
 
 def super_reso(image,pro_sr,model_sr):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -224,9 +214,9 @@ def plot_metrics(tm, history, model,val_dataloader, processor):
         return coco_eval
     
     acc = []
-    y_test = tm.label_path+'/'+'gt.json'
+    y_test = tm.model_path+'/'+'gt.json'
     for epoch in range(len(tm.param_info['epoch'])):
-        y_predict = tm.label_path+'/'+str(epoch+1)+'.json'
+        y_predict = tm.model_path+'/'+str(epoch+1)+'.json'
         acc.append(coco_caption_eval(y_test,y_predict).eval['METEOR'])
      
     for epoch, (acc,loss) in enumerate(zip(acc,history[0])):
@@ -236,6 +226,7 @@ def plot_metrics(tm, history, model,val_dataloader, processor):
         metric['step'] = epoch
         tm.save_stat_metrics(metric)   
 
+    logging.info('[user log] loss, acc graph made!!!')    
     # 최종모델에 대한 성능보기 
     val = 0
     val_caption =[]
@@ -284,7 +275,8 @@ def exec_init_svc(im):
 
 
 def exec_inference(df, params, batch_id):
-    
+    logging.info('exec_inference start')
+
     def decode_base64_video(encoded_video, output_file):
         # Base64 데이터를 디코드하여 바이너리 데이터로 변환
         decoded_video = base64.b64decode(encoded_video)
@@ -293,13 +285,12 @@ def exec_inference(df, params, batch_id):
         with open(output_file, 'wb') as file:
             file.write(decoded_video)
 
-        return decoded_video
 
     def draw_box(table, input_keyword):
         table_len = len(table)
 
-        print('-'*70)
-        print('input_keyword: ', input_keyword)
+        logging.info('-'*70)
+        logging.info('input_keyword: ', input_keyword)
         try:
             selected_row = []
 
@@ -314,13 +305,13 @@ def exec_inference(df, params, batch_id):
                     matched_keywords = [True for keyword in input_keyword if keyword in object_cap]
                     if sum(matched_keywords) == len(input_keyword):
                         selected_row.append(row)
-                        print("-"*70)
-                        print("keyword를 포함하는 객체 id")
-                        print(row['object_id'])
-                        print("해당 캡션 문장")
-                        print(row['caption'])
+                        logging.info("-"*70)
+                        logging.info("keyword를 포함하는 객체 id")
+                        logging.info(row['object_id'])
+                        logging.info("해당 캡션 문장")
+                        logging.info(row['caption'])
         except:
-            print('draw_box Error')
+            logging.info('draw_box Error')
 
         return selected_row
     
@@ -329,11 +320,8 @@ def exec_inference(df, params, batch_id):
             delattr(flags.FLAGS, name)
 
         # yolo4_deepsort1  unzip
-
-
-
         flags.DEFINE_string('framework', 'tf', 'tf, tflite, trt')
-        flags.DEFINE_string('weights', './yolov4_deepsort/checkpoints/yolov4-tiny-416','path to weights file')
+        flags.DEFINE_string('weights', '/data/aip/logs/t3qai/mods/algo_561/1/checkpoints/yolov4-tiny-416','path to weights file')
         flags.DEFINE_integer('size', 416, 'resize images to')
         flags.DEFINE_boolean('tiny', True, 'yolo or yolo-tiny')
         flags.DEFINE_string('model', 'yolov4', 'yolov3 or yolov4')
@@ -343,8 +331,8 @@ def exec_inference(df, params, batch_id):
         flags.DEFINE_boolean('dont_show', False, 'dont show video output')
         flags.DEFINE_boolean('info', False, 'show detailed info of tracked objects')
         flags.DEFINE_boolean('count', False, 'count objects being tracked on screen')
-        flags.DEFINE_string('video', 'input_video.mp4', 'path to input video or set to 0 for webcam')
-        flags.DEFINE_string('output', 'output_video.mp4', 'path to output video')
+        flags.DEFINE_string('video', '/data/aip/logs/t3qai/mods/algo_561/1/data/video/input_video.mp4', 'path to input video or set to 0 for webcam')
+        flags.DEFINE_string('output', '/data/aip/logs/t3qai/mods/algo_561/1/data/output/output_video.mp4', 'path to output video')
 
         FLAGS = flags.FLAGS
         FLAGS(sys.argv)
@@ -356,7 +344,7 @@ def exec_inference(df, params, batch_id):
         
         # initialize deep sort
         # model_filename = 'C:\\Users\\Sihyun\\Desktop\\INISW\\project\\sihyun_track_test\\yolov4-deepsort-master\\model_data\\mars-small128.pb'
-        model_filename = './yolov4_deepsort/model_data/mars-small128.pb'
+        model_filename = '/data/aip/logs/t3qai/mods/algo_561/1/model_data/mars-small128.pb'
         encoder = gdet.create_box_encoder(model_filename, batch_size=1)
         # calculate cosine distance metric
         metric = nn_matching.NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget)
@@ -377,8 +365,8 @@ def exec_inference(df, params, batch_id):
             interpreter.allocate_tensors()
             input_details = interpreter.get_input_details()
             output_details = interpreter.get_output_details()
-            print(input_details)
-            print(output_details)
+            logging.info(input_details)
+            logging.info(output_details)
         # otherwise load standard tensorflow saved model
         else:
             infer = keras.models.load_model(FLAGS.weights)
@@ -410,7 +398,7 @@ def exec_inference(df, params, batch_id):
             if len(draw_box_res) == 0:
                 return json.dumps({'status': 'fail', 'message': 'No object to track'})
             else:
-                print("## 실제로 Tracking이 되야 하는 객체 ID 리스트 ##")
+                logging.info("## 실제로 Tracking이 되야 하는 객체 ID 리스트 ##")
                 
                 draw_box_res = pd.DataFrame(draw_box_res)
                 data_rs = draw_box_res.drop_duplicates(subset='object_id',keep='first') 
@@ -418,8 +406,8 @@ def exec_inference(df, params, batch_id):
                 result_list = data_rs[['object_id', 'caption']]
 
                 result_obj_id = data_rs['object_id'].tolist()
-                print("result_obj_id: ", result_obj_id)
-                print("-" * 70)
+                logging.info("result_obj_id: ", result_obj_id)
+                logging.info("-" * 70)
         
         # while video is running
         # result_list = []
@@ -430,7 +418,7 @@ def exec_inference(df, params, batch_id):
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 image = Image.fromarray(frame)
             else:
-                print('Video has ended or failed, try a different video format!')
+                logging.info('Video has ended or failed, try a different video format!')
                 session.close()
                 break
             frame_num +=1
@@ -511,7 +499,7 @@ def exec_inference(df, params, batch_id):
             count = len(names)
             if FLAGS.count:
                 cv2.putText(frame, "Objects being tracked: {}".format(count), (5, 35), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 255, 0), 2)
-                print("Objects being tracked: {}".format(count))
+                logging.info("Objects being tracked: {}".format(count))
             # delete detections that are not in allowed_classes
             bboxes = np.delete(bboxes, deleted_indx, axis=0)
             scores = np.delete(scores, deleted_indx, axis=0)
@@ -556,20 +544,20 @@ def exec_inference(df, params, batch_id):
                     bbox_2 = int(bbox[2]) if int(bbox[2]) > 0 else 0
                     bbox_3 = int(bbox[3]) if int(bbox[3]) > 0 else 0
                     
-                    print("*"*70)
-                    print("객체 좌표값")
-                    print(bbox_0, bbox_1, bbox_2, bbox_3)
+                    logging.info("*"*70)
+                    logging.info("객체 좌표값")
+                    logging.info(bbox_0, bbox_1, bbox_2, bbox_3)
                     # insert_result = db_handler.insert_video_info(frame_num-1, track.track_id, bbox_0, bbox_1, bbox_2, bbox_3, video_id, minutes, seconds)
                     result_list.append({"frame_id": frame_num-1, "object_id": track.track_id, "x1": bbox_0, "y1": bbox_1, "x2": bbox_2, "y2": bbox_3, "minutes": minutes, "seconds": seconds})
                     cnt += 1
 
-                    print("DB Input Result: ", result_list)
-                    # print("DB Input Result: ", insert_result)
-                    print("*"*70)
+                    logging.info("DB Input Result: ", result_list)
+                    # logging.info("DB Input Result: ", insert_result)
+                    logging.info("*"*70)
 
                 elif input_type =='B':
                     if (int(track.track_id) in result_obj_id):
-                        print(int(track.track_id) in result_obj_id)
+                        logging.info(int(track.track_id) in result_obj_id)
 
                         color = colors[int(track.track_id) % len(colors)]
                         color = [i * 255 for i in color]
@@ -583,12 +571,12 @@ def exec_inference(df, params, batch_id):
             result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             
             if FLAGS.output and input_type == 'B':
-                print("*"*70)
-                print("Tracking이 되어야 하는 Object만 영상에 표시")
-                print("*"*70)
+                logging.info("*"*70)
+                logging.info("Tracking이 되어야 하는 Object만 영상에 표시")
+                logging.info("*"*70)
                 out.write(result)
 
-        return {"status":200}
+        return result_list
 
     # 캡션 생성 및 table에 객체 id별 캡션 넣어주기
     # 캡션 생성 함수
@@ -613,7 +601,7 @@ def exec_inference(df, params, batch_id):
     def cropping(cap, frame_id, box):
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_id) # 이미지 불러오기
         T, image = cap.read()
-        image = image[box[1]:box[3],box[0]:box[2]] if T else print("error")
+        image = image[box[1]:box[3],box[0]:box[2]] if T else logging.info("cropping error")
 
         return cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if T else None
     
@@ -622,10 +610,10 @@ def exec_inference(df, params, batch_id):
     ###########################################################################
 
     # 디코딩된 동영상을 저장할 파일 경로 및 이름
-    output_file = "input_video.mp4"
+    output_file = "/data/aip/logs/t3qai/mods/algo_561/1/data/video/input_video.mp4"
     # 디코딩 함수 호출
-    input_video = decode_base64_video(df, output_file)
-    video_file = io.BytesIO(input_video)
+    decode_base64_video(df.iloc[0,0], output_file)
+    video_file = os.path.join("/data/aip/logs/t3qai/mods/algo_561/1/data/video", output_file)
 
     result_list = video_tracking(input_type='A', table=None, input_keyword='')
     result = pd.DataFrame(result_list)
@@ -633,9 +621,9 @@ def exec_inference(df, params, batch_id):
     table = result.drop_duplicates(subset='object_id', keep='first')
     table = table.reset_index(drop=True)
 
-    print("*" * 70)
-    print(table)
-    print("*" * 70)
+    logging.info("*" * 70)
+    logging.info(table)
+    logging.info("*" * 70)
     
     pro_sr = Swin2SRImageProcessor.from_pretrained("caidas/swin2SR-lightweight-x2-64")
     model_sr = Swin2SRForImageSuperResolution.from_pretrained("caidas/swin2SR-lightweight-x2-64")
@@ -651,16 +639,23 @@ def exec_inference(df, params, batch_id):
     captions = multi_image_caption(params, images)
     table['caption'] = captions
 
-    print("*" * 70)
-    print(table)
-    print("*" * 70)
+    logging.info("*" * 70)
+    logging.info(table)
+    logging.info("*" * 70)
 
     input_keyword = [""]  # 키워드 0개
     # input_keyword = ["woman"]  # 키워드 1개
     # input_keyword=["man", "black"]  # 키워드 2개
     result_list = video_tracking(input_type='B', table=table, input_keyword=input_keyword)
-    print("keyword: ", input_keyword)
-    print(result_list)
-    print("*" * 70)
+    logging.info("keyword: ", input_keyword)
+    logging.info(result_list)
+    logging.info("*" * 70)
+    
+    result_list = result_list.to_dict('records')
+    
+    result = {"tracking_result": result_list}
+    logging.info("------final_checking------")
+    logging.info(result)
+    logging.info("------final_checking------")
 
-    return result_list
+    return result
